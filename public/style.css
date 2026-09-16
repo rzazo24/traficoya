@@ -26,6 +26,20 @@ body {
   flex-direction: column;
 }
 
+/* El panel de ayuda mueve el foco a su botón ✕ al abrirse (hace falta para que Tab funcione
+   bien desde el principio con teclado), pero eso puede pintar el anillo de foco por defecto
+   del navegador aunque se haya abierto con un toque, no con teclado. Se controla a mano con
+   la clase "user-is-tabbing" (ver app.js): solo se añade tras un Tab real y se quita con
+   cualquier puntero (ratón o toque). */
+button:focus {
+  outline: none;
+}
+
+body.user-is-tabbing button:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .app-header {
   background: var(--bg-panel);
   border-bottom: 2px solid var(--accent);
@@ -93,6 +107,33 @@ body {
 #btn-refrescar:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.help-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid #808080;
+  color: #808080;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.help-btn svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+}
+
+.help-btn:hover,
+.help-btn:active {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 main {
@@ -230,6 +271,100 @@ main {
   0% { opacity: 1; }
   50% { opacity: 0.55; }
   100% { opacity: 1; }
+}
+
+.help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* [hidden] y .help-overlay{display:flex} tienen la misma especificidad; sin este :not(), la
+   regla de abajo gana por venir después en la cascada y el overlay bloquea clics en toda la
+   página incluso con el atributo hidden puesto. */
+.help-overlay:not([hidden]) {
+  display: flex;
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.help-panel {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.panel-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: none;
+  color: #808080;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.panel-close svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.panel-close:hover {
+  color: var(--texto);
+}
+
+.help-content h3 {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b8b8b8;
+  margin: 1.1rem 0 0.4rem;
+}
+
+.help-content h3:first-of-type {
+  margin-top: 0.8rem;
+}
+
+.help-content p {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  margin: 0 0 0.5rem;
+}
+
+.help-content .punto {
+  vertical-align: -1px;
+}
+
+.help-content a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--accent);
 }
 
 .update-banner {
