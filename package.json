@@ -1,0 +1,9 @@
+{
+  "name": "traficoya",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mapa en tiempo real de incidencias de tráfico en la Comunidad de Madrid (datos abiertos DGT)",
+  "dependencies": {
+    "fast-xml-parser": "^5.11.1"
+  }
+}
