@@ -190,19 +190,119 @@
   // centenar de incidencias), pero el encuadre del mapa a los resultados se retrasa un poco
   // (debounce) para no dar saltos de zoom en cada letra mientras se escribe.
   const buscadorInput = document.getElementById('buscador-input');
+  const buscadorSugerencias = document.getElementById('buscador-sugerencias');
   const buscadorSinResultados = document.getElementById('buscador-sin-resultados');
   let debounceEncuadre = null;
+  let sugerenciasActuales = [];
+  let indiceSugerenciaActiva = -1;
+
+  function encuadrarSobre(visibles) {
+    if (visibles.length === 0) return;
+    const bounds = L.latLngBounds(visibles.map((i) => [i.lat, i.lon]));
+    mapa.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
+  }
+
+  // Sugerencias de carretera/municipio que ya coinciden con el texto y con los filtros de
+  // tipo activos en la leyenda — así nunca se sugiere algo que llevaría a un mapa vacío por
+  // culpa de un filtro de tipo, aunque el propio texto sí exista en los datos.
+  function obtenerSugerencias(texto) {
+    if (!texto) return [];
+    const valores = new Set();
+    ultimasIncidencias.forEach((incidencia) => {
+      if (!bucketsVisibles.has(bucketDe(incidencia))) return;
+      if (incidencia.carretera && normalizarTexto(incidencia.carretera).includes(texto)) {
+        valores.add(incidencia.carretera);
+      }
+      if (incidencia.municipio && normalizarTexto(incidencia.municipio).includes(texto)) {
+        valores.add(incidencia.municipio);
+      }
+    });
+    return [...valores].sort((a, b) => a.localeCompare(b, 'es')).slice(0, 8);
+  }
+
+  function ocultarSugerencias() {
+    buscadorSugerencias.hidden = true;
+    buscadorSugerencias.innerHTML = '';
+    sugerenciasActuales = [];
+    indiceSugerenciaActiva = -1;
+    buscadorInput.setAttribute('aria-expanded', 'false');
+    buscadorInput.removeAttribute('aria-activedescendant');
+  }
+
+  function resaltarSugerencia() {
+    [...buscadorSugerencias.children].forEach((li, indice) => {
+      li.classList.toggle('activa', indice === indiceSugerenciaActiva);
+    });
+    if (indiceSugerenciaActiva >= 0) {
+      buscadorInput.setAttribute('aria-activedescendant', `sugerencia-${indiceSugerenciaActiva}`);
+      buscadorSugerencias.children[indiceSugerenciaActiva].scrollIntoView({ block: 'nearest' });
+    } else {
+      buscadorInput.removeAttribute('aria-activedescendant');
+    }
+  }
+
+  function mostrarSugerencias(sugerencias) {
+    sugerenciasActuales = sugerencias;
+    indiceSugerenciaActiva = -1;
+    buscadorSugerencias.innerHTML = sugerencias
+      .map((valor, i) => `<li role="option" id="sugerencia-${i}">${valor}</li>`)
+      .join('');
+    buscadorSugerencias.hidden = sugerencias.length === 0;
+    buscadorInput.setAttribute('aria-expanded', sugerencias.length > 0 ? 'true' : 'false');
+  }
+
+  function seleccionarSugerencia(valor) {
+    buscadorInput.value = valor;
+    textoBusqueda = normalizarTexto(valor);
+    const visibles = pintarIncidencias(ultimasIncidencias);
+    ocultarSugerencias();
+    encuadrarSobre(visibles);
+    buscadorInput.focus();
+  }
 
   buscadorInput.addEventListener('input', () => {
     textoBusqueda = normalizarTexto(buscadorInput.value);
     const visibles = pintarIncidencias(ultimasIncidencias);
+    mostrarSugerencias(obtenerSugerencias(textoBusqueda));
 
     clearTimeout(debounceEncuadre);
     if (!textoBusqueda || visibles.length === 0) return;
-    debounceEncuadre = setTimeout(() => {
-      const bounds = L.latLngBounds(visibles.map((i) => [i.lat, i.lon]));
-      mapa.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
-    }, 400);
+    debounceEncuadre = setTimeout(() => encuadrarSobre(visibles), 400);
+  });
+
+  // mousedown, no click: dispara antes que el blur del input, así que preventDefault aquí
+  // evita que el input pierda el foco (y con él, que se oculten las sugerencias) antes de que
+  // el click llegue a registrarse.
+  buscadorSugerencias.addEventListener('mousedown', (event) => {
+    const li = event.target.closest('li');
+    if (!li) return;
+    event.preventDefault();
+    seleccionarSugerencia(li.textContent);
+  });
+
+  buscadorInput.addEventListener('keydown', (event) => {
+    if (buscadorSugerencias.hidden) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      indiceSugerenciaActiva = Math.min(indiceSugerenciaActiva + 1, sugerenciasActuales.length - 1);
+      resaltarSugerencia();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      indiceSugerenciaActiva = Math.max(indiceSugerenciaActiva - 1, -1);
+      resaltarSugerencia();
+    } else if (event.key === 'Enter' && indiceSugerenciaActiva >= 0) {
+      event.preventDefault();
+      seleccionarSugerencia(sugerenciasActuales[indiceSugerenciaActiva]);
+    } else if (event.key === 'Escape') {
+      ocultarSugerencias();
+    }
+  });
+
+  // Tab fuera del buscador (sin pasar por el mousedown de arriba, que ya cubre el click)
+  // también debe cerrar las sugerencias.
+  document.querySelector('.buscador').addEventListener('focusout', (event) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) ocultarSugerencias();
   });
 
   // Geolocalización: pide la ubicación al navegador, la marca en el mapa (capaUbicacion, no

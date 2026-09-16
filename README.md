@@ -32,9 +32,10 @@ próximo refresco, y se mantiene aunque los datos se actualicen solos cada 3 min
 ## Buscador y ubicación
 
 El buscador de arriba a la derecha del mapa filtra al instante por nombre de carretera o
-municipio (acentos y mayúsculas no importan) y encuadra el mapa sobre los resultados; se
-combina con los filtros de la leyenda. El botón de al lado pide la ubicación al navegador, la
-marca en el mapa y añade la distancia a cada incidencia en su propio popup.
+municipio (acentos y mayúsculas no importan), sugiriendo coincidencias mientras escribes
+(navegables con teclado) y encuadrando el mapa sobre los resultados; se combina con los
+filtros de la leyenda. El botón de al lado pide la ubicación al navegador, la marca en el mapa
+y añade la distancia a cada incidencia en su propio popup.
 
 ## Ayuda
 
