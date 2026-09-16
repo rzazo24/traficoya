@@ -110,7 +110,9 @@ main {
 .leyenda {
   position: absolute;
   z-index: 1000;
-  bottom: 1rem;
+  /* Suficiente para despejar la atribución de Leaflet, anclada también a la esquina
+     inferior (ver regla .leaflet-control-attribution más abajo). */
+  bottom: 2.25rem;
   left: 1rem;
   background: rgba(36, 36, 36, 0.92);
   border: 1px solid #3a3a3a;
@@ -275,6 +277,6 @@ main {
 @media (max-width: 600px) {
   .app-header h1 { font-size: 1.15rem; }
   .subtitle { display: none; }
-  .leyenda { left: 0.5rem; bottom: 0.5rem; max-width: 170px; font-size: 0.72rem; }
+  .leyenda { left: 0.5rem; bottom: 1.75rem; max-width: 170px; font-size: 0.72rem; }
   .leaflet-control-attribution { font-size: 0.55rem; }
 }
