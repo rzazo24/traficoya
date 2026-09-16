@@ -1,6 +1,21 @@
-# 🚦 TráficoYa
+# <img src="public/favicon.svg" width="30" height="30" align="absmiddle" alt=""> TráficoYa
 
-Mapa en tiempo real de incidencias de tráfico en la Comunidad de Madrid, con datos abiertos de la DGT.
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
+![Leaflet](https://img.shields.io/badge/Leaflet-199900?style=flat&logo=leaflet&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat&logo=vercel&logoColor=white)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)
+
+Mapa en tiempo real de incidencias de tráfico en la Comunidad de Madrid, con datos abiertos de
+la DGT — obras, accidentes, cierres y demás incidencias activas, filtrables por tipo, con
+detalles al tocar cada una. Funciona como PWA instalable en el móvil.
+
+Tercer proyecto de una serie de apps con APIs públicas para portfolio, junto a
+[Disaster Watch](https://github.com/rzazo24/disaster-watch) (GDACS) y
+[BusYa](https://github.com/rzazo24/busya) (EMT Madrid + CRTM).
+
+![Captura de TráficoYa: mapa de la Comunidad de Madrid con incidencias activas de la DGT, leyenda con filtros por tipo](screenshot.png)
 
 ## Stack
 
@@ -8,37 +23,18 @@ Mapa en tiempo real de incidencias de tráfico en la Comunidad de Madrid, con da
 - Backend: función serverless de Node.js en Vercel (`api/incidencias.js`)
 - Datos: feed DATEX2 v3.7 de la DGT (`https://nap.dgt.es/datex2/v3/dgt/SituationPublication/datex2_v37.xml`)
 
-## Estructura
+## Filtros de la leyenda
 
-```
-traficoya/
-├── api/
-│   └── incidencias.js        # descarga el XML de la DGT, lo parsea y devuelve JSON filtrado a Madrid
-├── public/
-│   ├── index.html
-│   ├── style.css
-│   ├── app.js                # mapa Leaflet, fetch a /api/incidencias, refresco periódico, registro del SW
-│   ├── sw.js                 # service worker: cachea el shell estático (nunca las incidencias en vivo)
-│   ├── manifest.webmanifest
-│   ├── favicon.svg
-│   └── icons/
-│       ├── icon-192.png
-│       ├── icon-512.png
-│       ├── icon-512-maskable.png
-│       └── apple-touch-icon.png
-├── package.json
-├── vercel.json
-└── README.md
-```
+Cada tipo de incidencia (obras, accidentes/daños, resto, severidad máxima) se puede ocultar del
+mapa tocando su casilla en la leyenda — se aplica al instante, sin recargar ni esperar al
+próximo refresco, y se mantiene aunque los datos se actualicen solos cada 3 minutos.
 
-## Desarrollo local
+## Ayuda
 
-```bash
-npm install
-npx vercel dev
-```
-
-Esto sirve `public/` como estático y expone `api/incidencias.js` en `http://localhost:3000/api/incidencias`.
+El botón "?" de la cabecera abre un panel con una explicación del mapa, los colores de los
+marcadores, la cadencia de actualización y el origen de los datos, más una sección de
+**estado de la API** que mide en directo cuánto tarda `/api/incidencias` en responder (con un
+botón para comprobarlo de nuevo cuando quieras).
 
 ## Endpoint `/api/incidencias`
 
@@ -73,11 +69,55 @@ actualización cada vez que la app vuelve a primer plano, no solo con la frecuen
 del navegador (~24h); al detectar una versión nueva, avisa con un mensaje y un botón "Recargar"
 en vez de recargar la pestaña sola.
 
-El número de versión (`v0.1.0`, visible junto al título) se sube a mano junto con `"version"`
-en `package.json` y `CACHE_NAME` en `sw.js` en cada despliegue con cambios visibles — subir
+El número de versión (visible junto al título) se sube a mano junto con `"version"` en
+`package.json` y `CACHE_NAME` en `sw.js` en cada despliegue con cambios visibles — subir
 `CACHE_NAME` es lo que dispara el aviso de "versión nueva" en quien ya tenga la app abierta o
 instalada.
 
-## Despliegue
+## Estructura
 
-Proyecto listo para desplegar en Vercel sin configuración adicional (`vercel` / conectar el repo desde el dashboard).
+```
+traficoya/
+├── api/
+│   └── incidencias.js        # descarga el XML de la DGT, lo parsea y devuelve JSON filtrado a Madrid
+├── public/
+│   ├── index.html
+│   ├── style.css
+│   ├── app.js                # mapa Leaflet, filtros de la leyenda, panel de ayuda, registro del SW
+│   ├── sw.js                 # service worker: cachea el shell estático (nunca las incidencias en vivo)
+│   ├── manifest.webmanifest
+│   ├── favicon.svg
+│   └── icons/
+│       ├── icon-192.png
+│       ├── icon-512.png
+│       ├── icon-512-maskable.png
+│       └── apple-touch-icon.png
+├── package.json
+├── vercel.json
+├── LICENSE
+├── screenshot.png
+└── README.md
+```
+
+## Desarrollo local
+
+```bash
+npm install
+npx vercel dev
+```
+
+Esto sirve `public/` como estático y expone `api/incidencias.js` en `http://localhost:3000/api/incidencias`.
+
+## Despliegue en Vercel
+
+1. `npx vercel link` (o importa el repo desde el dashboard de Vercel).
+2. `npx vercel --prod`.
+
+No hace falta ninguna variable de entorno ni paso de build: el feed de la DGT es público y
+Vercel sirve `public/` como estático, desplegando `api/incidencias.js` como Function
+automáticamente. El repo está conectado a Vercel y despliega solo en cada push a `main`.
+
+## Licencia
+
+Código bajo licencia MIT (ver [LICENSE](LICENSE)). Los datos de la DGT se rigen por los
+términos de uso de su [feed abierto](https://nap.dgt.es/).
