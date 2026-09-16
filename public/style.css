@@ -29,7 +29,10 @@ body {
 .app-header {
   background: var(--bg-panel);
   border-bottom: 2px solid var(--accent);
-  padding: 0.75rem 1.25rem;
+  /* max() con env(safe-area-inset-top): en un navegador normal no cambia nada (el inset vale
+     0), pero como PWA instalada en iOS con muesca/dynamic island evita que la cabecera quede
+     debajo de ella. */
+  padding: max(0.75rem, env(safe-area-inset-top)) 1.25rem 0.75rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -215,6 +218,48 @@ main {
   0% { opacity: 1; }
   50% { opacity: 0.55; }
   100% { opacity: 1; }
+}
+
+.update-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Por encima de la leyenda y los controles de Leaflet (z-index 1000): un aviso de versión
+     nueva debe verse aunque el mapa tenga overlays propios abiertos. */
+  z-index: 1100;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 1rem max(0.6rem, env(safe-area-inset-bottom));
+  background: var(--bg-panel);
+  border-top: 1px solid var(--accent);
+  color: var(--texto);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* [hidden] y display:flex puestos directamente en la misma clase empatan en especificidad,
+   así que sin el :not() el aviso se vería aunque tuviera el atributo hidden. */
+.update-banner:not([hidden]) {
+  display: flex;
+}
+
+.update-banner button {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: #1a1a1a;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.update-banner button:hover {
+  filter: brightness(1.1);
 }
 
 @media (max-width: 600px) {

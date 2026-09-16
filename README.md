@@ -13,11 +13,19 @@ Mapa en tiempo real de incidencias de tráfico en la Comunidad de Madrid, con da
 ```
 traficoya/
 ├── api/
-│   └── incidencias.js   # descarga el XML de la DGT, lo parsea y devuelve JSON filtrado a Madrid
+│   └── incidencias.js        # descarga el XML de la DGT, lo parsea y devuelve JSON filtrado a Madrid
 ├── public/
 │   ├── index.html
 │   ├── style.css
-│   └── app.js           # mapa Leaflet, fetch a /api/incidencias, refresco periódico
+│   ├── app.js                # mapa Leaflet, fetch a /api/incidencias, refresco periódico, registro del SW
+│   ├── sw.js                 # service worker: cachea el shell estático (nunca las incidencias en vivo)
+│   ├── manifest.webmanifest
+│   ├── favicon.svg
+│   └── icons/
+│       ├── icon-192.png
+│       ├── icon-512.png
+│       ├── icon-512-maskable.png
+│       └── apple-touch-icon.png
 ├── package.json
 ├── vercel.json
 └── README.md
@@ -54,6 +62,21 @@ Devuelve un array JSON con las incidencias activas cuya provincia (`lse:province
 ```
 
 Para incidencias en tramo de carretera (con `loc:from`/`loc:to`), `lat`/`lon` es el punto medio del tramo. Se cachea 2 minutos (`s-maxage=120`) para no saturar el feed de la DGT.
+
+## PWA
+
+Instalable desde el navegador ("Añadir a pantalla de inicio" / el aviso de instalación de
+Chrome) y funciona sin conexión gracias a un service worker (`sw.js`) que cachea el shell
+estático (HTML/CSS/JS/manifest/iconos) con una estrategia stale-while-revalidate — nunca las
+incidencias en sí, que siempre se piden en vivo a `/api/incidencias`. Revisa si hay
+actualización cada vez que la app vuelve a primer plano, no solo con la frecuencia por defecto
+del navegador (~24h); al detectar una versión nueva, avisa con un mensaje y un botón "Recargar"
+en vez de recargar la pestaña sola.
+
+El número de versión (`v0.1.0`, visible junto al título) se sube a mano junto con `"version"`
+en `package.json` y `CACHE_NAME` en `sw.js` en cada despliegue con cambios visibles — subir
+`CACHE_NAME` es lo que dispara el aviso de "versión nueva" en quien ya tenga la app abierta o
+instalada.
 
 ## Despliegue
 

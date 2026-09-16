@@ -117,4 +117,47 @@
 
   cargarIncidencias();
   setInterval(cargarIncidencias, INTERVALO_REFRESCO_MS);
+
+  // Cachea el shell de la app (ver sw.js) para que la PWA instalada cargue al instante y
+  // funcione sin conexión. Si el registro falla (p.ej. servido por HTTP en algún entorno
+  // local) no es grave: se registra en consola y ya está, la app sigue funcionando igual.
+  if ('serviceWorker' in navigator) {
+    const updateBanner = document.getElementById('update-banner');
+    const updateReloadBtn = document.getElementById('update-reload-btn');
+
+    // En la primera visita de siempre no hay ningún controller todavía; clients.claim() del
+    // propio sw.js hace que ESA primera instalación también dispare "controllerchange" más
+    // abajo, aunque no sea ninguna actualización real. Sin esta comprobación, cualquiera que
+    // abriera la app por primera vez vería el aviso de "versión nueva disponible" sin sentido.
+    const hadControllerBeforeRegister = Boolean(navigator.serviceWorker.controller);
+
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch((err) => console.error('SW registration failed', err));
+    });
+
+    // sw.js llama a skipWaiting()/clients.claim(), así que una versión nueva toma el control
+    // de una pestaña ya abierta de inmediato — pero esa pestaña sigue con el html/css/js
+    // antiguo ya cargado en memoria hasta que se recarga. "controllerchange" se dispara justo
+    // en ese momento; en vez de recargar sola (podría cortar de golpe un popup abierto o un
+    // refresco a medias), se avisa con un botón y se recarga cuando el usuario quiera. Con
+    // guarda para no mostrar el aviso dos veces, ya que el evento en teoría puede repetirse.
+    let updateAvailable = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (updateAvailable || !hadControllerBeforeRegister) return;
+      updateAvailable = true;
+      updateBanner.hidden = false;
+    });
+
+    updateReloadBtn.addEventListener('click', () => window.location.reload());
+
+    // El navegador solo revisa sw.js en busca de cambios según su propio calendario (más o
+    // menos cada 24h, o al navegar) — para una PWA que se reabre desde segundo plano en vez
+    // de recargarse, eso puede dejarla desactualizada mucho más tiempo del deseado. Volver a
+    // comprobar cada vez que la pestaña vuelve a ser visible detecta antes las novedades.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        navigator.serviceWorker.getRegistration().then((reg) => reg && reg.update());
+      }
+    });
+  }
 })();
