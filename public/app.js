@@ -168,11 +168,82 @@
     }
   }
 
+  // Estado de la API: mide en directo cuánto tarda /api/incidencias en responder, dentro del
+  // propio panel de ayuda (mismo patrón que el panel "Estado de las APIs" de BusYa, pero como
+  // una sección más aquí en vez de un overlay aparte, ya que TráficoYa solo tiene una API).
+  const apiStatusListEl = document.getElementById('api-status-list');
+  const apiStatusRecheckBtn = document.getElementById('api-status-recheck');
+
+  const API_STATUS_CHECKS = [{ name: 'DGT · incidencias', url: API_URL }];
+
+  // Solo mide si la petición completa a tiempo (res.ok) y cuánto tarda — no si el feed de la
+  // DGT tiene incidencias en Madrid ahora mismo (0 incidencias también es una respuesta válida).
+  async function measureApiLatency({ name, url }) {
+    const start = performance.now();
+    try {
+      const res = await fetch(url);
+      const elapsedMs = Math.round(performance.now() - start);
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        return { name, elapsedMs, ok: false, message: payload.error || `Error ${res.status}` };
+      }
+      return { name, elapsedMs, ok: true };
+    } catch (err) {
+      return { name, elapsedMs: Math.round(performance.now() - start), ok: false, message: err.message };
+    }
+  }
+
+  function loadingDotsHtml(label) {
+    return `<span class="loading-dots" role="status" aria-label="${label}"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>`;
+  }
+
+  function renderApiStatusRow(name, valueText, valueClass) {
+    const li = document.createElement('li');
+    li.className = 'api-status-row';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'api-status-row__name';
+    nameEl.textContent = name;
+
+    const valueEl = document.createElement('span');
+    valueEl.className = `api-status-row__value ${valueClass}`;
+    if (valueClass === 'api-status-row__value--pending') {
+      valueEl.innerHTML = loadingDotsHtml('Comprobando');
+    } else {
+      valueEl.textContent = valueText;
+    }
+
+    li.append(nameEl, valueEl);
+    return li;
+  }
+
+  async function checkApiStatus() {
+    apiStatusListEl.innerHTML = '';
+    for (const check of API_STATUS_CHECKS) {
+      apiStatusListEl.appendChild(renderApiStatusRow(check.name, '', 'api-status-row__value--pending'));
+    }
+
+    const results = await Promise.all(API_STATUS_CHECKS.map(measureApiLatency));
+
+    apiStatusListEl.innerHTML = '';
+    for (const result of results) {
+      if (!result.ok) {
+        apiStatusListEl.appendChild(renderApiStatusRow(result.name, result.message || 'Error', 'api-status-row__value--error'));
+        continue;
+      }
+      const valueClass = result.elapsedMs < 1000 ? 'api-status-row__value--ok' : 'api-status-row__value--slow';
+      apiStatusListEl.appendChild(renderApiStatusRow(result.name, `${result.elapsedMs} ms`, valueClass));
+    }
+  }
+
+  apiStatusRecheckBtn.addEventListener('click', checkApiStatus);
+
   function openHelp() {
     lastFocusedBeforeHelp = document.activeElement;
     helpOverlay.hidden = false;
     lockBodyScroll();
     helpCloseBtn.focus();
+    checkApiStatus();
   }
 
   function closeHelp() {

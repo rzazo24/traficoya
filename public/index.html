@@ -27,7 +27,7 @@
       <!-- Versión sincronizada a mano con "version" en package.json en cada despliegue con
            cambios visibles (mismo patrón que BusYa). Va aquí, no en .subtitle, para que
            siga visible en móvil aunque el subtítulo se oculte. -->
-      <span class="version">v0.2.0</span>
+      <span class="version">v0.3.0</span>
     </h1>
     <p class="subtitle">Incidencias de tráfico en tiempo real · Comunidad de Madrid</p>
     <div class="header-actions">
@@ -71,6 +71,10 @@
         en España; TráficoYa se queda solo con las de la Comunidad de Madrid. Puede haber
         incidencias que la propia DGT tarde unos minutos en reflejar o en retirar una vez
         resueltas.</p>
+        <h3>Estado de la API</h3>
+        <p class="api-status-hint">Cuánto tarda en responder ahora mismo la API de incidencias, probado en directo.</p>
+        <ul id="api-status-list" class="api-status-list"></ul>
+        <button id="api-status-recheck" type="button" class="api-status-recheck">Comprobar de nuevo</button>
         <h3>Código fuente</h3>
         <p>TráficoYa es un proyecto personal de código abierto: <a href="https://github.com/rzazo24/traficoya" target="_blank" rel="noopener">github.com/rzazo24/traficoya</a>.</p>
       </div>
