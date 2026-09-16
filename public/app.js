@@ -41,6 +41,15 @@
     return CATEGORIA_POR_TIPO[tipo] || 'resto';
   }
 
+  // El "bucket" es la categoría visual real de una incidencia (la que decide su color en el
+  // mapa): severidad máxima manda sobre el tipo, igual que en pintarIncidencias. Se reutiliza
+  // tal cual para los filtros de la leyenda, así una incidencia con severidad máxima se
+  // oculta con el filtro "Severidad máxima" aunque su tipo de fondo sea "Obras", por ejemplo
+  // — coherente con que ya se ve de ese color en el mapa, no del naranja de obras.
+  function bucketDe(incidencia) {
+    return incidencia.severidad === 'highest' ? 'highest' : categoriaDe(incidencia.tipo);
+  }
+
   function formatFecha(iso) {
     if (!iso) return null;
     const fecha = new Date(iso);
@@ -79,15 +88,16 @@
     incidencias.forEach((incidencia) => {
       if (typeof incidencia.lat !== 'number' || typeof incidencia.lon !== 'number') return;
 
-      const esHighest = incidencia.severidad === 'highest';
-      const categoria = categoriaDe(incidencia.tipo);
-      const color = esHighest ? COLORES.highest : COLORES[categoria];
+      const bucket = bucketDe(incidencia);
+      if (!bucketsVisibles.has(bucket)) return;
+
+      const esHighest = bucket === 'highest';
 
       const marcador = L.circleMarker([incidencia.lat, incidencia.lon], {
         radius: esHighest ? 10 : 7,
         color: esHighest ? '#ffffff' : '#1a1a1a',
         weight: esHighest ? 2 : 1,
-        fillColor: color,
+        fillColor: COLORES[bucket],
         fillOpacity: 0.9,
         className: esHighest ? 'marcador-highest' : '',
       });
@@ -96,6 +106,21 @@
       marcador.addTo(capaIncidencias);
     });
   }
+
+  // Filtros de la leyenda: todos los buckets visibles por defecto. Se guardan las últimas
+  // incidencias recibidas para poder re-pintar al cambiar un filtro sin volver a pedir el
+  // feed — cambiar qué se ve no debería depender de la red ni esperar al próximo refresco.
+  const bucketsVisibles = new Set(['obras', 'accidente', 'resto', 'highest']);
+  let ultimasIncidencias = [];
+
+  document.querySelectorAll('.filtro-checkbox').forEach((checkbox) => {
+    checkbox.addEventListener('change', () => {
+      const bucket = checkbox.dataset.bucket;
+      if (checkbox.checked) bucketsVisibles.add(bucket);
+      else bucketsVisibles.delete(bucket);
+      pintarIncidencias(ultimasIncidencias);
+    });
+  });
 
   async function cargarIncidencias() {
     btnRefrescar.disabled = true;
@@ -106,6 +131,7 @@
       if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
 
       const incidencias = await respuesta.json();
+      ultimasIncidencias = incidencias;
       pintarIncidencias(incidencias);
 
       const hora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
