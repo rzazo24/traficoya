@@ -98,6 +98,64 @@ const DETAIL_LABELS = {
   reduceSpeedNow: 'reducir la velocidad',
 };
 
+// Sentido de circulación (loc:tpegDirection). "unknown" y "both" se omiten a propósito: no
+// aportan nada útil que mostrar ("sentido desconocido" no ayuda a nadie).
+const DIRECCION_LABELS = {
+  northBound: 'sentido norte',
+  southBound: 'sentido sur',
+  eastBound: 'sentido este',
+  westBound: 'sentido oeste',
+  northEastBound: 'sentido noreste',
+  northWestBound: 'sentido noroeste',
+  southEastBound: 'sentido sureste',
+  southWestBound: 'sentido suroeste',
+};
+
+// Tipo de calzada (loc:carriageway). "unspecifiedCarriageway"/"mainCarriageway" (la calzada
+// principal, el caso más común) se omiten a propósito: no añaden información sobre la
+// incidencia frente a no decir nada.
+const CALZADA_LABELS = {
+  entrySlipRoad: 'vía de incorporación',
+  exitSlipRoad: 'vía de salida',
+  serviceRoad: 'vía de servicio',
+  connectingCarriageway: 'vía de conexión',
+  parallelCarriageway: 'calzada paralela',
+  climbingLane: 'carril de ascenso',
+};
+
+// Carril afectado (loc:laneUsage). "allLanesCompleteCarriageway" (todos los carriles) se omite
+// a propósito, por el mismo motivo que unspecifiedCarriageway arriba.
+const CARRIL_LABELS = {
+  leftLane: 'carril izquierdo',
+  rightLane: 'carril derecho',
+  middleLane: 'carril central',
+  turningLane: 'carril de giro',
+  carPoolLane: 'carril VAO',
+  tidalFlowLane: 'carril reversible',
+  centralReservation: 'mediana',
+  hardShoulder: 'arcén',
+  leftHardShoulder: 'arcén izquierdo',
+  rightHardShoulder: 'arcén derecho',
+};
+
+// Algunos valores de enumeración DATEX2 que no están en el esquema base vienen como
+// "_extended" en el texto de la etiqueta, con el valor real en el atributo _extendedValue —
+// visto en vivo en loc:laneUsage (ej. <loc:laneUsage _extendedValue="leftHardShoulder">
+// _extended</loc:laneUsage>). fast-xml-parser convierte eso en un objeto con "@_extendedValue"
+// en vez de en un string plano, así que hay que comprobar ambos casos.
+function valorConExtendido(nodo) {
+  // loc:carriageway se fuerza a array en el parser (ver isArray más abajo) porque puede
+  // repetirse como hermano — pero eso también envuelve en un array de un elemento la etiqueta
+  // interna del mismo nombre que lleva el valor real (<loc:carriageway><loc:carriageway>
+  // exitSlipRoad</loc:carriageway>...), así que hay que desenvolverla aquí también.
+  if (Array.isArray(nodo)) nodo = nodo[0];
+  if (typeof nodo === 'string') return nodo;
+  if (nodo && typeof nodo === 'object' && nodo['@_extendedValue']) {
+    return nodo['@_extendedValue'];
+  }
+  return null;
+}
+
 function humanizar(valorCamelCase) {
   if (!valorCamelCase || typeof valorCamelCase !== 'string') return null;
   const conEspacios = valorCamelCase.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
@@ -135,22 +193,56 @@ function extraerPunto(nodoPunto) {
       'loc:extendedTpegNonJunctionPoint'
     ] || {};
 
+  const km = parseFloat(ext['lse:kilometerPoint']);
+
   return {
     lat,
     lon,
     provincia: ext['lse:province'] ?? null,
     municipio: ext['lse:municipality'] ?? null,
+    kilometro: Number.isNaN(km) ? null : km,
   };
+}
+
+// El carril/calzada afectado vive en loc:supplementaryPositionalDescription, fuera de los
+// puntos from/to — es una propiedad del tramo completo, no de un extremo en concreto.
+// loc:carriageway puede repetirse (una entrada para la vía de acceso, otra para el carril
+// concreto de la calzada principal), forzado a array siempre en el parser para no tener que
+// distinguir el caso de una sola entrada del de varias.
+function extraerCarril(supplementaryPositionalDescription) {
+  const entradas = supplementaryPositionalDescription?.['loc:carriageway'];
+  if (!entradas) return null;
+
+  const partes = [];
+  for (const entrada of entradas) {
+    const tipoCalzada = valorConExtendido(entrada['loc:carriageway']);
+    if (tipoCalzada && CALZADA_LABELS[tipoCalzada]) partes.push(CALZADA_LABELS[tipoCalzada]);
+
+    const carril = valorConExtendido(entrada['loc:lane']?.['loc:laneUsage']);
+    if (carril && CARRIL_LABELS[carril]) partes.push(CARRIL_LABELS[carril]);
+  }
+
+  return partes.length ? partes.join(', ') : null;
+}
+
+// El sentido vive en el propio tpegLinearLocation/tpegPointLocation, con una ruta distinta
+// según el tipo de ubicación (igual que el resto de extracción por tipo en esta función).
+function extraerSentido(locationReference, tipo) {
+  const nodoDireccion =
+    tipo === 'loc:PointLocation'
+      ? locationReference['loc:tpegPointLocation']?.['loc:tpegDirection']
+      : locationReference['loc:tpegLinearLocation']?.['loc:tpegDirection'];
+
+  const valor = valorConExtendido(nodoDireccion);
+  return valor ? DIRECCION_LABELS[valor] ?? null : null;
 }
 
 function extraerUbicacion(locationReference) {
   if (!locationReference) return null;
 
   const tipo = locationReference['@_xsi:type'];
-  const carretera =
-    locationReference['loc:supplementaryPositionalDescription']?.[
-      'loc:roadInformation'
-    ]?.['loc:roadName'] ?? null;
+  const supDesc = locationReference['loc:supplementaryPositionalDescription'];
+  const carretera = supDesc?.['loc:roadInformation']?.['loc:roadName'] ?? null;
 
   let desde = null;
   let hasta = null;
@@ -164,7 +256,13 @@ function extraerUbicacion(locationReference) {
     hasta = extraerPunto(lineal?.['loc:to']);
   }
 
-  return { carretera, desde, hasta };
+  return {
+    carretera,
+    desde,
+    hasta,
+    sentido: extraerSentido(locationReference, tipo),
+    carril: extraerCarril(supDesc),
+  };
 }
 
 function coordenadaMedia(desde, hasta) {
@@ -181,7 +279,8 @@ function parsearIncidencias(xml) {
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '@_',
-    isArray: (nombre) => ['sit:situation', 'sit:situationRecord'].includes(nombre),
+    isArray: (nombre) =>
+      ['sit:situation', 'sit:situationRecord', 'loc:carriageway'].includes(nombre),
   });
 
   const doc = parser.parse(xml);
@@ -228,6 +327,9 @@ function parsearIncidencias(xml) {
         lat: coordenada.lat,
         lon: coordenada.lon,
         municipio: ubicacion.hasta?.municipio || ubicacion.desde?.municipio || null,
+        kilometro: ubicacion.hasta?.kilometro ?? ubicacion.desde?.kilometro ?? null,
+        sentido: ubicacion.sentido,
+        carril: ubicacion.carril,
         fecha_inicio: tiempos?.['com:overallStartTime'] ?? null,
         fecha_fin: tiempos?.['com:overallEndTime'] ?? null,
         severidad: severidadSituacion || registro['sit:severity'] || null,

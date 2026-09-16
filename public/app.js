@@ -63,6 +63,9 @@
 
     const filas = [
       incidencia.carretera ? `<dt>Carretera</dt><dd>${incidencia.carretera}</dd>` : '',
+      incidencia.sentido ? `<dt>Sentido</dt><dd>${incidencia.sentido}</dd>` : '',
+      typeof incidencia.kilometro === 'number' ? `<dt>Punto kilométrico</dt><dd>Km ${incidencia.kilometro}</dd>` : '',
+      incidencia.carril ? `<dt>Carril</dt><dd>${incidencia.carril}</dd>` : '',
       incidencia.municipio ? `<dt>Municipio</dt><dd>${incidencia.municipio}</dd>` : '',
       inicio ? `<dt>Inicio</dt><dd>${inicio}</dd>` : '',
       fin ? `<dt>Fin previsto</dt><dd>${fin}</dd>` : '',
