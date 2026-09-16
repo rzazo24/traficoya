@@ -20,6 +20,8 @@
     '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><g transform="translate(12 12) scale(1.35) translate(-12 -12)"><path d="M9.4 9.6c0-1.9 1.6-3.3 2.7-3.3 2 0 3.4 1.4 3.4 3.1 0 1.3-.7 2.1-1.8 2.8-.9.6-1.3 1-1.3 2v.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12.1" cy="16.9" r="1.05" fill="currentColor"/></g></svg>';
   const ICON_CLOSE =
     '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  const ICON_LOCATION =
+    '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 
   const estadoEl = document.getElementById('estado');
   const btnRefrescar = document.getElementById('btn-refrescar');
@@ -36,6 +38,26 @@
   ).addTo(mapa);
 
   const capaIncidencias = L.layerGroup().addTo(mapa);
+  const capaUbicacion = L.layerGroup().addTo(mapa);
+
+  // Distinta de capaIncidencias a propósito: pintarIncidencias limpia y repinta esa capa en
+  // cada refresco/filtro, y el marcador de "tu ubicación" no debe parpadear ni desaparecer
+  // cada vez que eso ocurre.
+  let ubicacionUsuario = null; // {lat, lon} o null si no se ha pedido/concedido
+
+  function distanciaKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function formatDistancia(km) {
+    return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+  }
 
   function categoriaDe(tipo) {
     return CATEGORIA_POR_TIPO[tipo] || 'resto';
@@ -61,12 +83,19 @@
     const inicio = formatFecha(incidencia.fecha_inicio);
     const fin = formatFecha(incidencia.fecha_fin);
 
+    const distancia = ubicacionUsuario
+      ? formatDistancia(
+          distanciaKm(ubicacionUsuario.lat, ubicacionUsuario.lon, incidencia.lat, incidencia.lon)
+        )
+      : null;
+
     const filas = [
       incidencia.carretera ? `<dt>Carretera</dt><dd>${incidencia.carretera}</dd>` : '',
       incidencia.sentido ? `<dt>Sentido</dt><dd>${incidencia.sentido}</dd>` : '',
       typeof incidencia.kilometro === 'number' ? `<dt>Punto kilométrico</dt><dd>Km ${incidencia.kilometro}</dd>` : '',
       incidencia.carril ? `<dt>Carril</dt><dd>${incidencia.carril}</dd>` : '',
       incidencia.municipio ? `<dt>Municipio</dt><dd>${incidencia.municipio}</dd>` : '',
+      distancia ? `<dt>Distancia</dt><dd>${distancia} de tu ubicación</dd>` : '',
       inicio ? `<dt>Inicio</dt><dd>${inicio}</dd>` : '',
       fin ? `<dt>Fin previsto</dt><dd>${fin}</dd>` : '',
     ].join('');
@@ -85,15 +114,42 @@
     `;
   }
 
+  // Sin tildes ni mayúsculas, para que "alcobendas"/"Alcobéndas" den con "Alcobendas" igual.
+  function normalizarTexto(str) {
+    return str
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  function coincideBusqueda(incidencia) {
+    if (!textoBusqueda) return true;
+    return (
+      normalizarTexto(incidencia.carretera || '').includes(textoBusqueda) ||
+      normalizarTexto(incidencia.municipio || '').includes(textoBusqueda)
+    );
+  }
+
+  function incidenciaVisible(incidencia) {
+    return (
+      typeof incidencia.lat === 'number' &&
+      typeof incidencia.lon === 'number' &&
+      bucketsVisibles.has(bucketDe(incidencia)) &&
+      coincideBusqueda(incidencia)
+    );
+  }
+
+  // Devuelve las incidencias realmente pintadas (tras aplicar filtros de leyenda y búsqueda),
+  // para que quien llama (el buscador) pueda encuadrar el mapa sobre ellas sin recalcular el
+  // filtro por su cuenta.
   function pintarIncidencias(incidencias) {
     capaIncidencias.clearLayers();
 
-    incidencias.forEach((incidencia) => {
-      if (typeof incidencia.lat !== 'number' || typeof incidencia.lon !== 'number') return;
+    const visibles = incidencias.filter(incidenciaVisible);
 
+    visibles.forEach((incidencia) => {
       const bucket = bucketDe(incidencia);
-      if (!bucketsVisibles.has(bucket)) return;
-
       const esHighest = bucket === 'highest';
 
       const marcador = L.circleMarker([incidencia.lat, incidencia.lon], {
@@ -108,6 +164,10 @@
       marcador.bindPopup(construirPopup(incidencia));
       marcador.addTo(capaIncidencias);
     });
+
+    buscadorSinResultados.hidden = !textoBusqueda || visibles.length > 0;
+
+    return visibles;
   }
 
   // Filtros de la leyenda: todos los buckets visibles por defecto. Se guardan las últimas
@@ -115,6 +175,7 @@
   // feed — cambiar qué se ve no debería depender de la red ni esperar al próximo refresco.
   const bucketsVisibles = new Set(['obras', 'accidente', 'resto', 'highest']);
   let ultimasIncidencias = [];
+  let textoBusqueda = '';
 
   document.querySelectorAll('.filtro-checkbox').forEach((checkbox) => {
     checkbox.addEventListener('change', () => {
@@ -123,6 +184,77 @@
       else bucketsVisibles.delete(bucket);
       pintarIncidencias(ultimasIncidencias);
     });
+  });
+
+  // Buscador por carretera/municipio: filtra al instante en cada tecla (barato, menos de un
+  // centenar de incidencias), pero el encuadre del mapa a los resultados se retrasa un poco
+  // (debounce) para no dar saltos de zoom en cada letra mientras se escribe.
+  const buscadorInput = document.getElementById('buscador-input');
+  const buscadorSinResultados = document.getElementById('buscador-sin-resultados');
+  let debounceEncuadre = null;
+
+  buscadorInput.addEventListener('input', () => {
+    textoBusqueda = normalizarTexto(buscadorInput.value);
+    const visibles = pintarIncidencias(ultimasIncidencias);
+
+    clearTimeout(debounceEncuadre);
+    if (!textoBusqueda || visibles.length === 0) return;
+    debounceEncuadre = setTimeout(() => {
+      const bounds = L.latLngBounds(visibles.map((i) => [i.lat, i.lon]));
+      mapa.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
+    }, 400);
+  });
+
+  // Geolocalización: pide la ubicación al navegador, la marca en el mapa (capaUbicacion, no
+  // capaIncidencias, para que sobreviva a cada repintado) y centra la vista ahí. A partir de
+  // ese momento construirPopup añade la distancia a cada incidencia — no hace falta volver a
+  // pintar nada para que aparezca, se calcula la próxima vez que se abra un popup.
+  const btnUbicacion = document.getElementById('btn-ubicacion');
+  btnUbicacion.innerHTML = ICON_LOCATION;
+
+  btnUbicacion.addEventListener('click', () => {
+    if (!('geolocation' in navigator)) {
+      estadoEl.textContent = 'Tu navegador no admite geolocalización.';
+      return;
+    }
+
+    btnUbicacion.disabled = true;
+    navigator.geolocation.getCurrentPosition(
+      (posicion) => {
+        const { latitude, longitude, accuracy } = posicion.coords;
+        ubicacionUsuario = { lat: latitude, lon: longitude };
+
+        capaUbicacion.clearLayers();
+        L.circle([latitude, longitude], {
+          radius: accuracy,
+          color: '#2196f3',
+          weight: 1,
+          fillColor: '#2196f3',
+          fillOpacity: 0.15,
+        }).addTo(capaUbicacion);
+        L.circleMarker([latitude, longitude], {
+          radius: 8,
+          color: '#ffffff',
+          weight: 2,
+          fillColor: '#2196f3',
+          fillOpacity: 1,
+          className: 'marcador-ubicacion',
+        }).addTo(capaUbicacion);
+
+        mapa.setView([latitude, longitude], 13);
+        btnUbicacion.disabled = false;
+        btnUbicacion.classList.add('activo');
+      },
+      (error) => {
+        console.error('Error de geolocalización:', error);
+        estadoEl.textContent =
+          error.code === error.PERMISSION_DENIED
+            ? 'Permiso de ubicación denegado.'
+            : 'No se pudo obtener tu ubicación.';
+        btnUbicacion.disabled = false;
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   });
 
   async function cargarIncidencias() {

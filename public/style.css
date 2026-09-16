@@ -151,6 +151,102 @@ main {
   background: var(--bg);
 }
 
+.controles-mapa {
+  position: absolute;
+  z-index: 1000;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.buscador {
+  position: relative;
+}
+
+#buscador-input {
+  width: 200px;
+  max-width: 42vw;
+  background: rgba(36, 36, 36, 0.92);
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  color: var(--texto);
+  font-size: 0.85rem;
+}
+
+#buscador-input::placeholder {
+  color: #808080;
+}
+
+#buscador-input:focus {
+  border-color: var(--accent);
+}
+
+.buscador-sin-resultados {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin: 0.3rem 0 0;
+  padding: 0.3rem 0.6rem;
+  background: rgba(36, 36, 36, 0.92);
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--accidente);
+  white-space: nowrap;
+}
+
+.btn-ubicacion {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(36, 36, 36, 0.92);
+  border: 1px solid #3a3a3a;
+  color: #b8b8b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-ubicacion svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+}
+
+.btn-ubicacion:hover,
+.btn-ubicacion.activo {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-ubicacion:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Halo de precisión + punto de "tu ubicación": mismo lenguaje visual que Google/Apple Maps
+   (punto sólido con borde blanco sobre un círculo translúcido), a propósito distinto en forma
+   del resto de marcadores aunque el azul se parezca al de "Otras incidencias" — así no hay
+   ambigüedad ni siquiera para quien no ve bien el color. */
+.marcador-ubicacion {
+  animation: pulso-ubicacion 2s ease-in-out infinite;
+}
+
+@keyframes pulso-ubicacion {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@media (max-width: 600px) {
+  .controles-mapa { top: 0.5rem; right: 0.5rem; }
+  #buscador-input { width: 150px; font-size: 0.8rem; }
+}
+
 .leyenda {
   position: absolute;
   z-index: 1000;

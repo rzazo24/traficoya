@@ -8,8 +8,8 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)
 
 Mapa en tiempo real de incidencias de tráfico en la Comunidad de Madrid, con datos abiertos de
-la DGT — obras, accidentes, cierres y demás incidencias activas, filtrables por tipo, con
-detalles al tocar cada una. Funciona como PWA instalable en el móvil.
+la DGT — obras, accidentes, cierres y demás incidencias activas, filtrables por tipo o por
+carretera/municipio, con detalles al tocar cada una. Funciona como PWA instalable en el móvil.
 
 Tercer proyecto de una serie de apps con APIs públicas para portfolio, junto a
 [Disaster Watch](https://github.com/rzazo24/disaster-watch) (GDACS) y
@@ -28,6 +28,13 @@ Tercer proyecto de una serie de apps con APIs públicas para portfolio, junto a
 Cada tipo de incidencia (obras, accidentes/daños, resto, severidad máxima) se puede ocultar del
 mapa tocando su casilla en la leyenda — se aplica al instante, sin recargar ni esperar al
 próximo refresco, y se mantiene aunque los datos se actualicen solos cada 3 minutos.
+
+## Buscador y ubicación
+
+El buscador de arriba a la derecha del mapa filtra al instante por nombre de carretera o
+municipio (acentos y mayúsculas no importan) y encuadra el mapa sobre los resultados; se
+combina con los filtros de la leyenda. El botón de al lado pide la ubicación al navegador, la
+marca en el mapa y añade la distancia a cada incidencia en su propio popup.
 
 ## Ayuda
 
@@ -86,7 +93,7 @@ traficoya/
 ├── public/
 │   ├── index.html
 │   ├── style.css
-│   ├── app.js                # mapa Leaflet, filtros de la leyenda, panel de ayuda, registro del SW
+│   ├── app.js                # mapa Leaflet, filtros/buscador, geolocalización, panel de ayuda, registro del SW
 │   ├── sw.js                 # service worker: cachea el shell estático (nunca las incidencias en vivo)
 │   ├── manifest.webmanifest
 │   ├── favicon.svg
