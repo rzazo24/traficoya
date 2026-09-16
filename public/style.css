@@ -273,7 +273,7 @@ main {
 
 @media (max-width: 600px) {
   .controles-mapa { top: 0.5rem; right: 0.5rem; }
-  #buscador-input { width: 150px; font-size: 0.8rem; }
+  #buscador-input { width: 160px; max-width: 55vw; font-size: 0.8rem; }
 }
 
 .leyenda {
