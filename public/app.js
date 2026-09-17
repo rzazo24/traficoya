@@ -294,6 +294,46 @@
   let ultimasIncidencias = [];
   let textoBusqueda = '';
 
+  // Última respuesta válida del feed, guardada en localStorage para poder mostrar algo (con
+  // aviso claro de que no son datos en vivo) si el primer fetch de una visita falla por falta
+  // de conexión, en vez de dejar el mapa completamente vacío. Solo se usa cuando todavía no hay
+  // nada pintado (ultimasIncidencias.length === 0): si ya había datos en pantalla de esta misma
+  // sesión, un fallo posterior del auto-refresco simplemente los deja donde están.
+  const CLAVE_CACHE_INCIDENCIAS = 'traficoya-cache-incidencias';
+  // Las incidencias de tráfico son de corta duración — mostrar una caché de hace, por ejemplo,
+  // dos días daría a entender que obras o accidentes ya resueltos siguen activos. Pasado este
+  // límite, mejor el aviso de error genérico que datos engañosos.
+  const CACHE_INCIDENCIAS_MAX_EDAD_MS = 6 * 60 * 60 * 1000; // 6 horas
+  let ultimaActualizacionExitosa = null; // Date.now() del último fetch en vivo que funcionó
+
+  function guardarCacheIncidencias(incidencias) {
+    try {
+      localStorage.setItem(CLAVE_CACHE_INCIDENCIAS, JSON.stringify({ incidencias, guardadoEn: Date.now() }));
+    } catch (error) {
+      // Ver cargarBucketsGuardados: sin almacenamiento disponible, no hay nada que ofrecer si
+      // el próximo fetch falla antes de tener datos en memoria, pero la app sigue funcionando.
+    }
+  }
+
+  function cargarCacheIncidencias() {
+    try {
+      const guardado = JSON.parse(localStorage.getItem(CLAVE_CACHE_INCIDENCIAS));
+      if (!guardado || !Array.isArray(guardado.incidencias) || typeof guardado.guardadoEn !== 'number') return null;
+      if (Date.now() - guardado.guardadoEn > CACHE_INCIDENCIAS_MAX_EDAD_MS) return null;
+      return guardado;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function formatAntiguedad(timestampMs) {
+    const minutos = Math.round((Date.now() - timestampMs) / 60000);
+    if (minutos < 1) return 'hace un momento';
+    if (minutos < 60) return `hace ${minutos} min`;
+    const horas = Math.round(minutos / 60);
+    return `hace ${horas} h`;
+  }
+
   document.querySelectorAll('.filtro-checkbox').forEach((checkbox) => {
     // El HTML marca los 4 checkboxes como "checked" por defecto — si se cargó un filtro
     // guardado que oculta alguno, el propio checkbox tiene que reflejarlo desde el principio.
@@ -514,6 +554,8 @@
 
       const incidencias = await respuesta.json();
       ultimasIncidencias = incidencias;
+      ultimaActualizacionExitosa = Date.now();
+      guardarCacheIncidencias(incidencias);
       pintarIncidencias(incidencias);
       // Si la vista en lista está abierta durante un refresco (auto o manual), se mantiene al
       // día igual que el mapa — no tendría sentido que se quedara congelada con datos viejos
@@ -531,7 +573,28 @@
       }
     } catch (error) {
       console.error('Error cargando incidencias:', error);
-      estadoEl.textContent = 'Error al cargar incidencias. Reintentando en breve…';
+
+      // Nada pintado todavía (típicamente: primer fetch de la visita, sin conexión) — se
+      // recurre a la última respuesta válida guardada en una visita anterior en vez de dejar
+      // el mapa vacío, con un aviso explícito de que no son datos en vivo.
+      if (ultimasIncidencias.length === 0) {
+        const cache = cargarCacheIncidencias();
+        if (cache) {
+          ultimasIncidencias = cache.incidencias;
+          pintarIncidencias(cache.incidencias);
+          if (!listaOverlay.hidden) renderizarLista();
+          estadoEl.textContent = `Sin conexión · datos de ${formatAntiguedad(cache.guardadoEn)}`;
+          if (!enlaceInicialProcesado) {
+            enlaceInicialProcesado = true;
+            abrirIncidenciaDesdeUrl();
+          }
+          return;
+        }
+      }
+
+      estadoEl.textContent = ultimaActualizacionExitosa
+        ? `Sin conexión · datos de ${formatAntiguedad(ultimaActualizacionExitosa)}`
+        : 'Error al cargar incidencias. Reintentando en breve…';
     } finally {
       btnRefrescar.disabled = false;
     }

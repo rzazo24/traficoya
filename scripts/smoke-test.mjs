@@ -131,6 +131,26 @@ try {
     })
   );
 
+  await check('sin conexión al recargar, se muestran los últimos datos guardados en vez de un mapa vacío', () =>
+    withPage(async (page) => {
+      await page.goto(baseUrl);
+      await esperarIncidenciasCargadas(page);
+      const totalOriginal = await page.locator('.leaflet-interactive').count();
+      if (totalOriginal === 0) throw new Error('no había marcadores tras la carga inicial, no se puede probar el fallback sin conexión');
+
+      // route().abort() simula un fetch que falla de verdad (sin red), no solo una respuesta
+      // de error — es lo que dispara la caché de la última respuesta válida (ver CLAUDE.md,
+      // "Offline fallback").
+      await page.route('**/api/incidencias', (route) => route.abort('internetdisconnected'));
+      await page.reload();
+      await page.waitForFunction(() => document.getElementById('estado')?.textContent.includes('Sin conexión'), { timeout: 15_000 });
+
+      const totalTrasRecargar = await page.locator('.leaflet-interactive').count();
+      if (totalTrasRecargar === 0) throw new Error('el mapa quedó vacío al recargar sin conexión en vez de usar la caché de localStorage ("traficoya-cache-incidencias")');
+      if (totalTrasRecargar !== totalOriginal) throw new Error(`se esperaban ${totalOriginal} marcadores desde la caché, hay ${totalTrasRecargar}`);
+    })
+  );
+
   if (incidenciaDePrueba) {
     await check('tocar un marcador abre su popup y actualiza la URL con ?id=', () =>
       withPage(async (page) => {
