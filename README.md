@@ -166,6 +166,10 @@ No hace falta ninguna variable de entorno ni paso de build: el feed de la DGT es
 Vercel sirve `public/` como estático, desplegando `api/incidencias.js` como Function
 automáticamente. El repo está conectado a Vercel y despliega solo en cada push a `main`.
 
+## Changelog
+
+Historial de versiones en [CHANGELOG.md](CHANGELOG.md).
+
 ## Licencia
 
 Código bajo licencia MIT (ver [LICENSE](LICENSE)). Los datos de la DGT se rigen por los
