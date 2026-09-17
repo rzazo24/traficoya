@@ -98,6 +98,31 @@ const DETAIL_LABELS = {
   reduceSpeedNow: 'reducir la velocidad',
 };
 
+// Además de sit:cause.sit:detailedCauseType (el porqué: "roadworks"), cada tipo concreto de
+// situationRecord trae su propio campo hermano de detalle, con nombre distinto según
+// sit:@_xsi:type — mismo patrón documentado para detailedCauseType, pero un campo aparte e
+// independiente, no una alternativa. Comprobado contra el feed en vivo de Madrid: en el ~87% de
+// las incidencias activas este campo tiene un valor *distinto* de detailedCauseType (ej. la
+// causa es "obras en la calzada" pero este campo añade "cierre de carril", la restricción
+// concreta), así que aporta información real, no redundante.
+// sit:genericSituationRecordName (de sit:GenericSituationRecord) se excluye a propósito: es una
+// etiqueta de "tipo de registro" genérica, no un detalle — el único valor visto en vivo es
+// "incident", que no añade nada ("Vehículo atrapado · incidencia" no dice más que "Vehículo
+// atrapado" solo) — mismo criterio que ya se aplica a "unspecifiedCarriageway" etc. más abajo.
+const CAMPOS_TIPO_PROPIO = [
+  'sit:roadOrCarriagewayOrLaneManagementType',
+  'sit:nonWeatherRelatedRoadConditionType',
+  'sit:abnormalTrafficType',
+  'sit:obstructionType',
+];
+
+function extraerTipoPropio(registro) {
+  for (const campo of CAMPOS_TIPO_PROPIO) {
+    if (typeof registro[campo] === 'string') return registro[campo];
+  }
+  return null;
+}
+
 // Sentido de circulación (loc:tpegDirection). "unknown" y "both" se omiten a propósito: no
 // aportan nada útil que mostrar ("sentido desconocido" no ayuda a nadie).
 const DIRECCION_LABELS = {
@@ -129,6 +154,8 @@ const CARRIL_LABELS = {
   leftLane: 'carril izquierdo',
   rightLane: 'carril derecho',
   middleLane: 'carril central',
+  middleLeftLane: 'carril central izquierdo',
+  middleRightLane: 'carril central derecho',
   turningLane: 'carril de giro',
   carPoolLane: 'carril VAO',
   tidalFlowLane: 'carril reversible',
@@ -150,8 +177,14 @@ function valorConExtendido(nodo) {
   // exitSlipRoad</loc:carriageway>...), así que hay que desenvolverla aquí también.
   if (Array.isArray(nodo)) nodo = nodo[0];
   if (typeof nodo === 'string') return nodo;
-  if (nodo && typeof nodo === 'object' && nodo['@_extendedValue']) {
-    return nodo['@_extendedValue'];
+  // El atributo XML se llama literalmente "_extendedValue" (con guion bajo inicial incluido en
+  // el propio nombre), así que con attributeNamePrefix: '@_' el parser produce la clave
+  // "@__extendedValue" (dos guiones bajos) — confirmado contra el feed en vivo. Un solo guion
+  // bajo aquí (como estaba antes) nunca hace match, así que este escape hatch llevaba desde el
+  // principio sin funcionar de verdad: cualquier carril venido por esta vía (arcenes, carriles
+  // centrales) se perdía en silencio en vez de aparecer en "carril".
+  if (nodo && typeof nodo === 'object' && nodo['@__extendedValue']) {
+    return nodo['@__extendedValue'];
   }
   return null;
 }
@@ -310,13 +343,19 @@ function parsearIncidencias(xml) {
       const causa = registro['sit:cause'];
       const causeType = causa?.['sit:causeType'] ?? null;
       const detalle = extraerDetalleCausa(causa?.['sit:detailedCauseType']);
+      const tipoPropio = extraerTipoPropio(registro);
 
       const tiempos = validez?.['com:validityTimeSpecification'];
 
       const etiquetaBase = etiquetaCausa(causeType);
-      const etiquetaExtra = etiquetaDetalle(detalle);
-      const descripcionTipo = etiquetaExtra
-        ? `${etiquetaBase}: ${etiquetaExtra}`
+      // tipoPropio se ignora si coincide en crudo con "detalle" (mismo valor bajo dos nombres
+      // de campo, en vez de dos piezas de información distintas) — ver CAMPOS_TIPO_PROPIO.
+      const detallesExtra = [
+        etiquetaDetalle(detalle),
+        tipoPropio && tipoPropio !== detalle ? etiquetaDetalle(tipoPropio) : null,
+      ].filter(Boolean);
+      const descripcionTipo = detallesExtra.length
+        ? `${etiquetaBase}: ${detallesExtra.join(' · ')}`
         : etiquetaBase;
 
       incidencias.push({

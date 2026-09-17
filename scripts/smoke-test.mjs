@@ -72,6 +72,28 @@ try {
     }
   });
 
+  // El escape hatch "_extendedValue" de DATEX2 (ver valorConExtendido en api/incidencias.js)
+  // estuvo roto desde el principio por un desajuste de guiones bajos en la clave del atributo
+  // — "arcén izquierdo"/"carril central..." solo pueden salir de ahí (esos valores de carril no
+  // existen como texto plano en el feed), así que si aparecen es que el escape hatch funciona.
+  // Depende de que el feed en vivo tenga ahora mismo alguna incidencia así, por eso se omite en
+  // vez de fallar si no hay ninguna.
+  {
+    const res = await fetch(`${baseUrl}/api/incidencias`);
+    const datos = await res.json();
+    const conValorExtendido = datos.find((i) => i.carril && /arcén|carril central/i.test(i.carril));
+    const nombre = 'el escape hatch "_extendedValue" de DATEX2 se interpreta bien (arcenes / carriles centrales)';
+    if (!conValorExtendido) {
+      skip(nombre, 'ahora mismo ninguna incidencia activa de Madrid usa un arcén o carril central');
+    } else {
+      await check(nombre, async () => {
+        if (typeof conValorExtendido.carril !== 'string' || !conValorExtendido.carril.trim()) {
+          throw new Error(`carril vacío o no textual para la incidencia ${conValorExtendido.id}`);
+        }
+      });
+    }
+  }
+
   await check('buscar por carretera o municipio filtra el mapa y sugiere coincidencias', () =>
     withPage(async (page) => {
       await page.goto(baseUrl);

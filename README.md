@@ -76,14 +76,14 @@ Devuelve un array JSON con las incidencias activas cuya provincia (`lse:province
   {
     "id": "22832648",
     "tipo": "roadMaintenance",
-    "descripcion_tipo": "Obras de mantenimiento: obras en la calzada",
+    "descripcion_tipo": "Obras de mantenimiento: obras en la calzada · cierre de carril",
     "carretera": "M-50",
     "lat": 40.3338,
     "lon": -3.6281,
     "municipio": "Madrid",
     "kilometro": 37,
     "sentido": "sentido noreste",
-    "carril": "vía de salida, carril izquierdo",
+    "carril": "vía de salida, arcén izquierdo",
     "fecha_inicio": "2026-07-10T10:55:00.000+02:00",
     "fecha_fin": "2026-10-30T05:30:00.000+01:00",
     "severidad": null
