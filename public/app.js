@@ -135,12 +135,10 @@
 
     return `
       <div class="popup-incidencia">
-        <div class="popup-incidencia__header">
-          <h3>${incidencia.descripcion_tipo || 'Incidencia'}</h3>
-          <button type="button" class="popup-compartir" data-id="${incidencia.id}" aria-label="Compartir esta incidencia">${ICON_SHARE}</button>
-        </div>
+        <h3>${incidencia.descripcion_tipo || 'Incidencia'}</h3>
         <dl>${filas}</dl>
         ${badge}
+        <button type="button" class="popup-compartir" data-id="${incidencia.id}" aria-label="Compartir esta incidencia">${ICON_SHARE}</button>
       </div>
     `;
   }

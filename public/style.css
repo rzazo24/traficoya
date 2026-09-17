@@ -381,20 +381,23 @@ main {
   line-height: 1.4;
 }
 
-.popup-incidencia__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin: 0 0 0.35rem;
+.popup-incidencia {
+  position: relative;
+  /* Hueco para el botón de compartir, anclado en esta misma esquina (ver .popup-compartir),
+     para que no quede encima de la última fila de datos ni del badge de severidad. */
+  padding-bottom: 1.9rem;
 }
 
-.popup-incidencia__header h3 {
-  margin: 0;
+.popup-incidencia h3 {
+  /* Dejar sitio a la "×" de cierre de Leaflet, arriba a la derecha del popup entero. */
+  margin: 0 1.5rem 0.35rem 0;
   font-size: 0.95rem;
 }
 
 .popup-compartir {
+  position: absolute;
+  right: 0;
+  bottom: 0;
   flex-shrink: 0;
   width: 22px;
   height: 22px;
