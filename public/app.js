@@ -257,18 +257,52 @@
     return visibles;
   }
 
-  // Filtros de la leyenda: todos los buckets visibles por defecto. Se guardan las últimas
-  // incidencias recibidas para poder re-pintar al cambiar un filtro sin volver a pedir el
-  // feed — cambiar qué se ve no debería depender de la red ni esperar al próximo refresco.
-  const bucketsVisibles = new Set(['obras', 'accidente', 'resto', 'highest']);
+  // Filtros de la leyenda: todos los buckets visibles por defecto, salvo que el propio usuario
+  // haya ocultado alguno antes — a diferencia de la búsqueda (contextual, no debería sobrevivir
+  // a una recarga sin más), un filtro de tipo es más una preferencia ("no quiero ver obras") que
+  // tiene sentido recordar. Se guardan las últimas incidencias recibidas para poder re-pintar al
+  // cambiar un filtro sin volver a pedir el feed — cambiar qué se ve no debería depender de la
+  // red ni esperar al próximo refresco.
+  const BUCKETS_VALIDOS = ['obras', 'accidente', 'resto', 'highest'];
+  const CLAVE_FILTROS_GUARDADOS = 'traficoya-filtros';
+
+  function cargarBucketsGuardados() {
+    try {
+      const guardado = JSON.parse(localStorage.getItem(CLAVE_FILTROS_GUARDADOS));
+      if (!Array.isArray(guardado)) return null;
+      const validos = guardado.filter((bucket) => BUCKETS_VALIDOS.includes(bucket));
+      // Si no queda ninguno válido (dato corrupto, versión antigua, etc.) se ignora y se
+      // vuelve al valor por defecto en vez de arrancar con el mapa completamente vacío.
+      return validos.length > 0 ? validos : null;
+    } catch (error) {
+      // localStorage puede no estar disponible (navegación privada, cuota agotada...): el
+      // filtro simplemente no persiste, no es un error que deba interrumpir la carga de la app.
+      return null;
+    }
+  }
+
+  function guardarBucketsVisibles() {
+    try {
+      localStorage.setItem(CLAVE_FILTROS_GUARDADOS, JSON.stringify([...bucketsVisibles]));
+    } catch (error) {
+      // Ver cargarBucketsGuardados: sin almacenamiento disponible, se sigue funcionando en
+      // memoria para la sesión actual, solo que no sobrevive a la recarga.
+    }
+  }
+
+  const bucketsVisibles = new Set(cargarBucketsGuardados() || BUCKETS_VALIDOS);
   let ultimasIncidencias = [];
   let textoBusqueda = '';
 
   document.querySelectorAll('.filtro-checkbox').forEach((checkbox) => {
+    // El HTML marca los 4 checkboxes como "checked" por defecto — si se cargó un filtro
+    // guardado que oculta alguno, el propio checkbox tiene que reflejarlo desde el principio.
+    checkbox.checked = bucketsVisibles.has(checkbox.dataset.bucket);
     checkbox.addEventListener('change', () => {
       const bucket = checkbox.dataset.bucket;
       if (checkbox.checked) bucketsVisibles.add(bucket);
       else bucketsVisibles.delete(bucket);
+      guardarBucketsVisibles();
       pintarIncidencias(ultimasIncidencias);
     });
   });

@@ -115,6 +115,22 @@ try {
     })
   );
 
+  await check('los filtros de la leyenda se recuerdan tras recargar la página', () =>
+    withPage(async (page) => {
+      await page.goto(baseUrl);
+      await esperarIncidenciasCargadas(page);
+      await page.click('input[data-bucket="obras"]');
+      await page.reload();
+      await esperarIncidenciasCargadas(page);
+      if (await page.locator('input[data-bucket="obras"]').isChecked()) {
+        throw new Error('el filtro "obras" volvió a marcarse tras recargar, no se recordó (ver localStorage "traficoya-filtros" en app.js)');
+      }
+      // El buscador, en cambio, no debe recordarse — es contextual, no una preferencia (ver
+      // CLAUDE.md). No hay nada que probar "en negativo" ahí más allá de que no exista ese
+      // comportamiento, así que no hace falta un check aparte.
+    })
+  );
+
   if (incidenciaDePrueba) {
     await check('tocar un marcador abre su popup y actualiza la URL con ?id=', () =>
       withPage(async (page) => {
