@@ -45,6 +45,14 @@ incidencia en concreto. El icono junto al título del popup hace lo mismo con un
 diálogo nativo de compartir en móvil, o copia el enlace si el navegador no lo tiene. Abrir un
 enlace con `?id=` de una incidencia que ya se resolvió avisa en vez de fallar en silencio.
 
+## Vista en lista
+
+El icono de lista de la cabecera abre las mismas incidencias que ve el mapa (con los filtros
+de la leyenda y del buscador ya aplicados) como texto navegable — pensada sobre todo para quien
+no puede o no quiere depender del mapa, ya que sus marcadores no son accesibles por sí mismos
+para un lector de pantalla. Ordenable por severidad (por defecto) o por distancia, si ya has
+activado tu ubicación. Tocar una fila cierra la lista y abre esa incidencia en el mapa.
+
 ## Ayuda
 
 El botón "?" de la cabecera abre un panel con una explicación del mapa, los colores de los

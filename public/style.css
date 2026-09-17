@@ -555,6 +555,106 @@ main {
   border-bottom: 1px dashed var(--accent);
 }
 
+.lista-panel {
+  max-width: 480px;
+}
+
+.lista-controles {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.8rem 0 0.7rem;
+}
+
+.lista-contador {
+  font-size: 0.75rem;
+  color: #b8b8b8;
+}
+
+.lista-orden {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.lista-orden-btn {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #3a3a3a;
+  border-radius: 999px;
+  background: none;
+  color: #b8b8b8;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.lista-orden-btn.activo {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.lista-orden-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.lista-incidencias {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lista-item__boton {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--texto);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.lista-item__boton:hover {
+  border-color: var(--accent);
+}
+
+.lista-item__boton .punto {
+  flex-shrink: 0;
+}
+
+.lista-item__contenido {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.8rem;
+}
+
+.lista-item__contenido strong {
+  font-size: 0.85rem;
+}
+
+.lista-item__detalle {
+  color: #a0a0a0;
+  font-size: 0.75rem;
+}
+
+.lista-item__distancia {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: #b8b8b8;
+  white-space: nowrap;
+}
+
 .api-status-hint {
   margin: 0 0 0.6rem;
   font-size: 0.75rem;

@@ -26,6 +26,8 @@
     '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const ICON_CHECK =
     '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const ICON_LISTA =
+    '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   const estadoEl = document.getElementById('estado');
   const btnRefrescar = document.getElementById('btn-refrescar');
@@ -425,6 +427,11 @@
         mapa.setView([latitude, longitude], 13);
         btnUbicacion.disabled = false;
         btnUbicacion.classList.add('activo');
+
+        // Ordenar la lista por distancia solo tiene sentido una vez hay ubicación — el botón
+        // empieza deshabilitado en el HTML.
+        const botonDistancia = document.querySelector('.lista-orden-btn[data-orden="distancia"]');
+        if (botonDistancia) botonDistancia.disabled = false;
       },
       (error) => {
         console.error('Error de geolocalización:', error);
@@ -467,6 +474,10 @@
       const incidencias = await respuesta.json();
       ultimasIncidencias = incidencias;
       pintarIncidencias(incidencias);
+      // Si la vista en lista está abierta durante un refresco (auto o manual), se mantiene al
+      // día igual que el mapa — no tendría sentido que se quedara congelada con datos viejos
+      // mientras el mapa de detrás ya se ha actualizado.
+      if (!listaOverlay.hidden) renderizarLista();
 
       const hora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       estadoEl.textContent = `${incidencias.length} incidencias · actualizado ${hora}`;
@@ -488,35 +499,51 @@
   cargarIncidencias();
   setInterval(cargarIncidencias, INTERVALO_REFRESCO_MS);
 
-  // Panel de ayuda: mismo patrón de accesibilidad que en BusYa (bloqueo de scroll del fondo,
-  // foco atrapado dentro del panel, se guarda y se devuelve el foco al cerrar, Escape cierra,
-  // tocar fuera del panel cierra).
+  // Overlays (ayuda, lista): mismo patrón de accesibilidad que en BusYa — helpers genéricos
+  // (openOverlay/closeOverlay) en vez de uno por panel, ya que ahora hay dos. Bloqueo de scroll
+  // del fondo con contador (por si en algún momento hubiera que superponer más de uno), foco
+  // atrapado dentro del panel, se guarda y se devuelve el foco al cerrar, Escape cierra, tocar
+  // fuera del panel cierra.
   const helpOpenBtn = document.getElementById('help-open');
   const helpCloseBtn = document.getElementById('help-close');
   const helpOverlay = document.getElementById('help-overlay');
   const helpPanel = helpOverlay.querySelector('.help-panel');
 
+  const listaOpenBtn = document.getElementById('lista-open');
+  const listaCloseBtn = document.getElementById('lista-close');
+  const listaOverlay = document.getElementById('lista-overlay');
+  const listaPanel = listaOverlay.querySelector('.help-panel');
+
   helpOpenBtn.innerHTML = ICON_HELP;
   helpCloseBtn.innerHTML = ICON_CLOSE;
+  listaOpenBtn.innerHTML = ICON_LISTA;
+  listaCloseBtn.innerHTML = ICON_CLOSE;
 
   let lockedScrollY = 0;
+  let openOverlayCount = 0;
 
   function lockBodyScroll() {
-    lockedScrollY = window.scrollY;
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${lockedScrollY}px`;
-    document.body.style.width = '100%';
+    if (openOverlayCount === 0) {
+      lockedScrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${lockedScrollY}px`;
+      document.body.style.width = '100%';
+    }
+    openOverlayCount++;
   }
 
   function unlockBodyScroll() {
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.width = '';
-    window.scrollTo(0, lockedScrollY);
+    openOverlayCount = Math.max(0, openOverlayCount - 1);
+    if (openOverlayCount === 0) {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      window.scrollTo(0, lockedScrollY);
+    }
   }
 
   const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
-  let lastFocusedBeforeHelp = null;
+  let lastFocusedBeforeOverlay = null;
 
   function trapFocusInPanel(event, panel) {
     const focusable = [...panel.querySelectorAll(FOCUSABLE_SELECTOR)].filter((el) => el.offsetParent !== null);
@@ -531,6 +558,23 @@
       event.preventDefault();
       first.focus();
     }
+  }
+
+  function openOverlay(overlay, closeBtn) {
+    lastFocusedBeforeOverlay = document.activeElement;
+    overlay.hidden = false;
+    lockBodyScroll();
+    closeBtn.focus();
+  }
+
+  function closeOverlay(overlay) {
+    if (overlay.hidden) return;
+    overlay.hidden = true;
+    unlockBodyScroll();
+    if (lastFocusedBeforeOverlay && document.contains(lastFocusedBeforeOverlay)) {
+      lastFocusedBeforeOverlay.focus();
+    }
+    lastFocusedBeforeOverlay = null;
   }
 
   // Estado de la API: mide en directo cuánto tarda /api/incidencias en responder, dentro del
@@ -603,28 +647,121 @@
 
   apiStatusRecheckBtn.addEventListener('click', checkApiStatus);
 
+  // Vista en lista: mismo conjunto de incidencias que ve el mapa (filtros de leyenda +
+  // buscador ya aplicados vía incidenciaVisible), pero como texto real navegable — los
+  // circleMarker del mapa no son accesibles por sí mismos (sin texto alternativo alguno para
+  // quien use un lector de pantalla), así que esta es la única forma real de consultar los
+  // datos sin depender del mapa. Orden por severidad por defecto; por distancia solo tiene
+  // sentido, y solo se habilita, una vez hay ubicación (ver el click de btnUbicacion).
+  const listaContadorEl = document.getElementById('lista-contador');
+  const listaIncidenciasEl = document.getElementById('lista-incidencias');
+  const listaOrdenBtns = document.querySelectorAll('.lista-orden-btn');
+  let ordenLista = 'severidad';
+
+  function ordenarPorSeveridad(incidencias) {
+    return [...incidencias].sort((a, b) => {
+      const pesoA = bucketDe(a) === 'highest' ? 0 : 1;
+      const pesoB = bucketDe(b) === 'highest' ? 0 : 1;
+      if (pesoA !== pesoB) return pesoA - pesoB;
+      return (a.carretera || '').localeCompare(b.carretera || '', 'es');
+    });
+  }
+
+  function ordenarPorDistancia(incidencias) {
+    return [...incidencias].sort(
+      (a, b) =>
+        distanciaKm(ubicacionUsuario.lat, ubicacionUsuario.lon, a.lat, a.lon) -
+        distanciaKm(ubicacionUsuario.lat, ubicacionUsuario.lon, b.lat, b.lon)
+    );
+  }
+
+  function construirFilaLista(incidencia) {
+    const bucket = bucketDe(incidencia);
+    const distancia = ubicacionUsuario
+      ? formatDistancia(distanciaKm(ubicacionUsuario.lat, ubicacionUsuario.lon, incidencia.lat, incidencia.lon))
+      : null;
+    const detalle = [incidencia.carretera, incidencia.municipio].filter(Boolean).join(' · ');
+
+    const li = document.createElement('li');
+    li.className = 'lista-item';
+
+    const boton = document.createElement('button');
+    boton.type = 'button';
+    boton.className = 'lista-item__boton';
+    boton.dataset.id = incidencia.id;
+    boton.innerHTML = `
+      <span class="punto punto-${bucket}" aria-hidden="true"></span>
+      <span class="lista-item__contenido">
+        <strong>${incidencia.descripcion_tipo || 'Incidencia'}</strong>
+        ${detalle ? `<span class="lista-item__detalle">${detalle}</span>` : ''}
+      </span>
+      ${distancia ? `<span class="lista-item__distancia">${distancia}</span>` : ''}
+    `;
+
+    li.appendChild(boton);
+    return li;
+  }
+
+  function renderizarLista() {
+    const visibles = ultimasIncidencias.filter(incidenciaVisible);
+    const ordenadas =
+      ordenLista === 'distancia' && ubicacionUsuario ? ordenarPorDistancia(visibles) : ordenarPorSeveridad(visibles);
+
+    listaContadorEl.textContent = `${ordenadas.length} incidencia${ordenadas.length === 1 ? '' : 's'}`;
+    listaIncidenciasEl.innerHTML = '';
+    ordenadas.forEach((incidencia) => listaIncidenciasEl.appendChild(construirFilaLista(incidencia)));
+  }
+
+  listaOrdenBtns.forEach((boton) => {
+    boton.addEventListener('click', () => {
+      if (boton.disabled) return;
+      ordenLista = boton.dataset.orden;
+      listaOrdenBtns.forEach((b) => b.classList.toggle('activo', b === boton));
+      renderizarLista();
+    });
+  });
+
+  // Tocar una fila cierra la lista, encuadra el mapa sobre esa incidencia y abre su popup —
+  // el mismo destino al que ya se llega tocando su marcador directamente en el mapa.
+  listaIncidenciasEl.addEventListener('click', (event) => {
+    const boton = event.target.closest('.lista-item__boton');
+    if (!boton) return;
+    const marcador = marcadoresPorId.get(boton.dataset.id);
+    closeLista();
+    if (marcador) {
+      mapa.setView(marcador.getLatLng(), 14);
+      marcador.openPopup();
+    }
+  });
+
   function openHelp() {
-    lastFocusedBeforeHelp = document.activeElement;
-    helpOverlay.hidden = false;
-    lockBodyScroll();
-    helpCloseBtn.focus();
+    openOverlay(helpOverlay, helpCloseBtn);
     checkApiStatus();
   }
 
   function closeHelp() {
-    if (helpOverlay.hidden) return;
-    helpOverlay.hidden = true;
-    unlockBodyScroll();
-    if (lastFocusedBeforeHelp && document.contains(lastFocusedBeforeHelp)) {
-      lastFocusedBeforeHelp.focus();
-    }
-    lastFocusedBeforeHelp = null;
+    closeOverlay(helpOverlay);
+  }
+
+  function openLista() {
+    renderizarLista();
+    openOverlay(listaOverlay, listaCloseBtn);
+  }
+
+  function closeLista() {
+    closeOverlay(listaOverlay);
   }
 
   helpOpenBtn.addEventListener('click', openHelp);
   helpCloseBtn.addEventListener('click', closeHelp);
   helpOverlay.addEventListener('click', (event) => {
     if (event.target === helpOverlay) closeHelp();
+  });
+
+  listaOpenBtn.addEventListener('click', openLista);
+  listaCloseBtn.addEventListener('click', closeLista);
+  listaOverlay.addEventListener('click', (event) => {
+    if (event.target === listaOverlay) closeLista();
   });
 
   // El anillo de foco de .user-is-tabbing (ver style.css) no se deja en manos del
@@ -635,11 +772,13 @@
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       closeHelp();
+      closeLista();
       return;
     }
     if (event.key === 'Tab') {
       document.body.classList.add('user-is-tabbing');
       if (!helpOverlay.hidden) trapFocusInPanel(event, helpPanel);
+      else if (!listaOverlay.hidden) trapFocusInPanel(event, listaPanel);
     }
   });
   document.addEventListener('mousedown', () => document.body.classList.remove('user-is-tabbing'));

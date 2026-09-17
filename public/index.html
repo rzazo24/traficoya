@@ -27,12 +27,13 @@
       <!-- Versión sincronizada a mano con "version" en package.json en cada despliegue con
            cambios visibles (mismo patrón que BusYa). Va aquí, no en .subtitle, para que
            siga visible en móvil aunque el subtítulo se oculte. -->
-      <span class="version">v0.8.1</span>
+      <span class="version">v0.9.0</span>
     </h1>
     <p class="subtitle">Incidencias de tráfico en tiempo real · Comunidad de Madrid</p>
     <div class="header-actions">
       <span id="estado" class="estado" role="status" aria-live="polite">Cargando…</span>
       <button id="btn-refrescar" type="button">Actualizar</button>
+      <button id="lista-open" class="help-btn" type="button" aria-label="Ver incidencias en lista"></button>
       <button id="help-open" class="help-btn" type="button" aria-label="Ayuda"></button>
     </div>
   </header>
@@ -95,6 +96,9 @@
         directo a esa incidencia (o lo copia, si el navegador no tiene el diálogo nativo de
         compartir) — la propia dirección de la página también se actualiza sola al abrir un
         popup, así que copiarla desde el navegador funciona igual.</p>
+        <p>El icono de lista de la cabecera muestra las mismas incidencias en texto, sin
+        depender del mapa — ordenables por severidad o, si has activado tu ubicación, por
+        distancia. Tocar una lleva directamente a su marcador.</p>
         <h3>Colores de los marcadores</h3>
         <p><span class="punto punto-obras"></span> Obras · <span class="punto punto-accidente"></span> Accidentes o daños en la vía · <span class="punto punto-resto"></span> Resto de incidencias (cierres, restricciones, tráfico anormal…).</p>
         <p><span class="punto punto-highest"></span> <strong>Severidad máxima</strong>: la propia DGT marca esa incidencia como la más grave — se destaca más grande, con borde blanco y un pulso, esté del tipo que esté.</p>
@@ -122,6 +126,21 @@
         <h3>Código fuente</h3>
         <p>TráficoYa es un proyecto personal de código abierto: <a href="https://github.com/rzazo24/traficoya" target="_blank" rel="noopener">github.com/rzazo24/traficoya</a>.</p>
       </div>
+    </div>
+  </div>
+
+  <div id="lista-overlay" class="help-overlay" hidden>
+    <div class="panel help-panel lista-panel" role="dialog" aria-modal="true" aria-labelledby="lista-title">
+      <button id="lista-close" class="panel-close" type="button" aria-label="Cerrar lista"></button>
+      <h2 id="lista-title" class="panel-title">Incidencias</h2>
+      <div class="lista-controles">
+        <span id="lista-contador" class="lista-contador"></span>
+        <div class="lista-orden" role="group" aria-label="Ordenar por">
+          <button type="button" class="lista-orden-btn activo" data-orden="severidad">Severidad</button>
+          <button type="button" class="lista-orden-btn" data-orden="distancia" disabled title="Activa tu ubicación primero">Distancia</button>
+        </div>
+      </div>
+      <ul id="lista-incidencias" class="lista-incidencias"></ul>
     </div>
   </div>
 
