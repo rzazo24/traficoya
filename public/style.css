@@ -501,6 +501,39 @@ main {
   overscroll-behavior: contain;
 }
 
+/* Scrollbar oscura a juego con el tema, en vez del gris claro por defecto del sistema — se
+   nota sobre todo en Windows/Linux de escritorio (macOS ya usa una superpuesta y fina que
+   apenas destaca sobre el fondo oscuro). Firefox vía scrollbar-width/-color, el resto vía
+   ::-webkit-scrollbar. */
+.help-panel,
+.buscador-sugerencias {
+  scrollbar-width: thin;
+  scrollbar-color: #4a4a4a var(--bg-panel);
+}
+
+.help-panel::-webkit-scrollbar,
+.buscador-sugerencias::-webkit-scrollbar {
+  width: 8px;
+}
+
+.help-panel::-webkit-scrollbar-track,
+.buscador-sugerencias::-webkit-scrollbar-track {
+  background: var(--bg-panel);
+  border-radius: 999px;
+}
+
+.help-panel::-webkit-scrollbar-thumb,
+.buscador-sugerencias::-webkit-scrollbar-thumb {
+  background: #4a4a4a;
+  border-radius: 999px;
+  border: 2px solid var(--bg-panel);
+}
+
+.help-panel::-webkit-scrollbar-thumb:hover,
+.buscador-sugerencias::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
 .panel-close {
   position: absolute;
   top: 0.75rem;
@@ -579,12 +612,16 @@ main {
 }
 
 .lista-orden-btn {
-  padding: 0.3rem 0.6rem;
+  /* min-height 44px: el tamaño táctil mínimo recomendado (WCAG 2.5.5) — con el padding de
+     antes (0.3rem, ~24px de alto total) el botón se tocaba con dificultad en un móvil real,
+     aunque en las pruebas automatizadas (que hacen click exacto al píxel) pareciera ir bien. */
+  min-height: 44px;
+  padding: 0.5rem 0.9rem;
   border: 1px solid #3a3a3a;
   border-radius: 999px;
   background: none;
   color: #b8b8b8;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   cursor: pointer;
 }
 
@@ -596,6 +633,12 @@ main {
 .lista-orden-btn:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.lista-orden-aviso {
+  margin: -0.3rem 0 0.7rem;
+  font-size: 0.7rem;
+  color: #808080;
 }
 
 .lista-incidencias {
@@ -782,4 +825,19 @@ main {
   .subtitle { display: none; }
   .leyenda { left: 0.5rem; bottom: 1.75rem; max-width: 170px; font-size: 0.72rem; }
   .leaflet-control-attribution { font-size: 0.55rem; }
+
+  /* El texto de #estado ("142 incidencias · actualizado 08:56") más el botón Actualizar y los
+     dos iconos no caben en una sola fila en un móvil estrecho (320-390px) — sin esto, la fila
+     entera se desbordaba y los iconos de Lista/Ayuda quedaban fuera de la pantalla, invisibles
+     e inalcanzables. Forzar el estado a su propia línea (flex-basis 100%) deja a los botones
+     en la fila siguiente, con hueco de sobra. */
+  .header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: 100%;
+  }
+  .estado {
+    flex: 1 1 100%;
+    text-align: right;
+  }
 }

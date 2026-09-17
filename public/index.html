@@ -27,7 +27,7 @@
       <!-- Versión sincronizada a mano con "version" en package.json en cada despliegue con
            cambios visibles (mismo patrón que BusYa). Va aquí, no en .subtitle, para que
            siga visible en móvil aunque el subtítulo se oculte. -->
-      <span class="version">v0.9.1</span>
+      <span class="version">v0.9.2</span>
     </h1>
     <p class="subtitle">Incidencias de tráfico en tiempo real · Comunidad de Madrid</p>
     <div class="header-actions">
@@ -140,6 +140,11 @@
           <button type="button" class="lista-orden-btn" data-orden="distancia" disabled title="Activa tu ubicación primero">Distancia</button>
         </div>
       </div>
+      <!-- El title del botón de arriba no se ve nunca en móvil (sin hover al tocar), así que
+           el motivo de que "Distancia" esté deshabilitado necesita estar en texto visible
+           también — se oculta en cuanto la geolocalización tiene éxito (ver btnUbicacion en
+           app.js). -->
+      <p id="lista-orden-aviso" class="lista-orden-aviso">Activa tu ubicación (el icono 🎯 del mapa) para ordenar por distancia.</p>
       <ul id="lista-incidencias" class="lista-incidencias"></ul>
     </div>
   </div>

@@ -433,9 +433,12 @@
         btnUbicacion.classList.add('activo');
 
         // Ordenar la lista por distancia solo tiene sentido una vez hay ubicación — el botón
-        // empieza deshabilitado en el HTML.
+        // (y el aviso de por qué está deshabilitado, que en móvil no puede depender del title
+        // del propio botón: no hay hover al tocar) empiezan así en el HTML.
         const botonDistancia = document.querySelector('.lista-orden-btn[data-orden="distancia"]');
         if (botonDistancia) botonDistancia.disabled = false;
+        const avisoDistancia = document.getElementById('lista-orden-aviso');
+        if (avisoDistancia) avisoDistancia.hidden = true;
       },
       (error) => {
         console.error('Error de geolocalización:', error);

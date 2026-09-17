@@ -228,12 +228,41 @@ try {
       const distanciaDeshabilitada = await page.locator('.lista-orden-btn[data-orden="distancia"]').isDisabled();
       if (!distanciaDeshabilitada) throw new Error('el orden por distancia debería empezar deshabilitado sin geolocalización');
 
+      // El title del botón deshabilitado no se ve nunca en móvil (sin hover al tocar) — sin
+      // este aviso en texto, tocarlo sin geolocalizar no da ninguna pista y se siente roto.
+      if (await page.locator('#lista-orden-aviso').isHidden()) {
+        throw new Error('el aviso de "activa tu ubicación" debería verse mientras Distancia esté deshabilitado');
+      }
+
+      // Tamaño táctil mínimo recomendado (WCAG 2.5.5) — con un botón más pequeño, un toque
+      // real (impreciso) puede fallar el objetivo aunque un click automatizado, exacto al
+      // píxel, no lo detecte nunca como fallo.
+      for (const orden of ['severidad', 'distancia']) {
+        const altura = await page.locator(`.lista-orden-btn[data-orden="${orden}"]`).evaluate((el) => el.getBoundingClientRect().height);
+        if (altura < 44) throw new Error(`el botón "${orden}" mide ${altura}px de alto, por debajo del mínimo táctil de 44px`);
+      }
+
       if (totalLista > 0) {
         await page.locator('.lista-item__boton').first().click();
         await page.waitForTimeout(200);
         if (await page.locator('#lista-overlay').isVisible()) throw new Error('la lista no se cerró al tocar una fila');
         if (await page.locator('.leaflet-popup-content').count() === 0) throw new Error('no se abrió ningún popup al tocar una fila de la lista');
       }
+    })
+  );
+
+  await check('la cabecera no se desborda en un móvil estrecho (320px)', () =>
+    withPage(async (page) => {
+      await page.setViewportSize({ width: 320, height: 700 });
+      await page.goto(baseUrl);
+      await esperarIncidenciasCargadas(page);
+      const { scrollWidth, viewportWidth, helpRight } = await page.evaluate(() => ({
+        scrollWidth: document.body.scrollWidth,
+        viewportWidth: window.innerWidth,
+        helpRight: document.getElementById('help-open').getBoundingClientRect().right,
+      }));
+      if (scrollWidth > viewportWidth) throw new Error(`la página se desborda horizontalmente (${scrollWidth}px de contenido en ${viewportWidth}px de viewport)`);
+      if (helpRight > viewportWidth) throw new Error(`el botón de ayuda queda fuera de la pantalla (borde derecho en ${helpRight}px, viewport de ${viewportWidth}px)`);
     })
   );
 
