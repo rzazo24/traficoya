@@ -826,18 +826,28 @@ main {
   .leyenda { left: 0.5rem; bottom: 1.75rem; max-width: 170px; font-size: 0.72rem; }
   .leaflet-control-attribution { font-size: 0.55rem; }
 
-  /* El texto de #estado ("142 incidencias · actualizado 08:56") más el botón Actualizar y los
-     dos iconos no caben en una sola fila en un móvil estrecho (320-390px) — sin esto, la fila
-     entera se desbordaba y los iconos de Lista/Ayuda quedaban fuera de la pantalla, invisibles
-     e inalcanzables. Forzar el estado a su propia línea (flex-basis 100%) deja a los botones
-     en la fila siguiente, con hueco de sobra. */
+  /* Estado + Actualizar + Lista + Ayuda en la misma fila que el título, tan compacta como en
+     v0.8.0 (antes de que existiera el botón de Lista) — la fila completa iba a su propia línea
+     con el estado a la izquierda y los botones agrupados a la derecha (space-between), nunca
+     3 líneas. La solución anterior (forzar el estado a su propia línea entera) evitaba el
+     desbordamiento pero hacía la cabecera bastante más alta de lo necesario. */
   .header-actions {
-    flex-wrap: wrap;
-    justify-content: flex-end;
     width: 100%;
+    justify-content: space-between;
+    gap: 0.5rem;
   }
   .estado {
-    flex: 1 1 100%;
-    text-align: right;
+    /* En vez de forzar su propia línea, el texto se recorta con "…" si no cupiera en un móvil
+       muy estrecho (<~340px) — así Actualizar/Lista/Ayuda nunca pierden su sitio ni se salen
+       de la pantalla, sin necesidad de una segunda fila en los móviles normales. */
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #btn-refrescar,
+  .help-btn {
+    flex-shrink: 0;
   }
 }

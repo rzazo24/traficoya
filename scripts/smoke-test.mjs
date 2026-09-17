@@ -266,6 +266,24 @@ try {
     })
   );
 
+  await check('la cabecera en móvil se queda en 2 filas (estado y botones comparten fila)', () =>
+    withPage(async (page) => {
+      // Regresión concreta: antes de v0.9.3 el estado se forzaba a su propia línea entera para
+      // evitar el desbordamiento de arriba, lo que dejaba la cabecera en 3 filas y bastante más
+      // alta de lo necesario. Ahora estado y botones comparten fila (el estado se recorta con
+      // "…" si hiciera falta) — este check comprueba que sigue siendo así, no solo que no haya
+      // desbordamiento.
+      await page.setViewportSize({ width: 390, height: 700 });
+      await page.goto(baseUrl);
+      await esperarIncidenciasCargadas(page);
+      const { estadoTop, helpTop } = await page.evaluate(() => ({
+        estadoTop: document.getElementById('estado').getBoundingClientRect().top,
+        helpTop: document.getElementById('help-open').getBoundingClientRect().top,
+      }));
+      if (Math.abs(estadoTop - helpTop) > 5) throw new Error(`el estado (top ${estadoTop}px) y el botón de ayuda (top ${helpTop}px) no están en la misma fila`);
+    })
+  );
+
   await check('el service worker se registra', () =>
     withPage(async (page) => {
       await page.goto(baseUrl);

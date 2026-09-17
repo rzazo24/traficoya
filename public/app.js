@@ -487,7 +487,9 @@
       if (!listaOverlay.hidden) renderizarLista();
 
       const hora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-      estadoEl.textContent = `${incidencias.length} incidencias · actualizado ${hora}`;
+      // Sin "actualizado": en móvil, con el botón de lista añadido, ya no cabía en una sola
+      // fila junto a Actualizar/Lista/Ayuda (ver CLAUDE.md, "Cabecera compacta en móvil").
+      estadoEl.textContent = `${incidencias.length} incidencias · ${hora}`;
 
       if (!enlaceInicialProcesado) {
         enlaceInicialProcesado = true;
