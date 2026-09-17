@@ -130,5 +130,13 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="app.js"></script>
+  <!-- Vercel Web Analytics: solo cuenta visitas/page views y Core Web Vitals, sin cookies ni
+       datos personales. Hay que activarlo también en el dashboard del proyecto en Vercel
+       (Analytics → Enable) para que empiece a recoger datos; sin eso, este script no falla,
+       simplemente no envía nada. -->
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>

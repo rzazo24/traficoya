@@ -44,6 +44,13 @@ marcadores, la cadencia de actualización y el origen de los datos, más una sec
 **estado de la API** que mide en directo cuánto tarda `/api/incidencias` en responder (con un
 botón para comprobarlo de nuevo cuando quieras).
 
+## Analíticas
+
+Vercel Web Analytics (visitas y Core Web Vitals, sin cookies ni datos personales) mediante la
+integración por `<script>` para sitios sin framework — no necesita instalar ningún paquete.
+Hace falta activarlo también en el dashboard del proyecto en Vercel (Analytics → Enable) para
+que empiece a recoger datos.
+
 ## Endpoint `/api/incidencias`
 
 Devuelve un array JSON con las incidencias activas cuya provincia (`lse:province`) es Madrid:
