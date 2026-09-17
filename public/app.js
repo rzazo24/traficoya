@@ -234,7 +234,11 @@
         className: esHighest ? 'marcador-highest' : '',
       });
 
-      marcador.bindPopup(construirPopup(incidencia));
+      // Función, no un string fijo: bindPopup con un string congela el contenido en este
+      // instante (antes de geolocalizar, casi siempre) y nunca lo regenera — con una función,
+      // Leaflet la vuelve a llamar cada vez que el popup se abre, así que la distancia
+      // aparece en cuanto hay ubicación sin esperar al siguiente repintado.
+      marcador.bindPopup(() => construirPopup(incidencia));
       // Refleja en la URL qué incidencia se está viendo, para que se pueda compartir el enlace
       // directo (ver enlaceIncidencia/compartirIncidencia) sin más que copiar la barra de
       // direcciones. Solo se limpia al cerrar si sigue siendo la incidencia actual en la URL —

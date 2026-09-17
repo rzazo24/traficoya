@@ -126,6 +126,8 @@ traficoya/
 │       ├── icon-512.png
 │       ├── icon-512-maskable.png
 │       └── apple-touch-icon.png
+├── scripts/
+│   └── smoke-test.mjs    # npm test — extremo a extremo contra el feed real de la DGT
 ├── package.json
 ├── vercel.json
 ├── LICENSE
@@ -141,6 +143,19 @@ npx vercel dev
 ```
 
 Esto sirve `public/` como estático y expone `api/incidencias.js` en `http://localhost:3000/api/incidencias`.
+
+## Tests
+
+```bash
+npm install
+npm test
+```
+
+`scripts/smoke-test.mjs` (Playwright) levanta un servidor mínimo propio con el handler real de
+`api/incidencias.js` y prueba de extremo a extremo el mapa, los filtros, el buscador con
+sugerencias, la geolocalización, el enlace compartible, el panel de ayuda con el estado de la
+API, la vista en lista y el service worker — contra el feed real de la DGT, sin necesidad del
+CLI de Vercel ni de ninguna credencial.
 
 ## Despliegue en Vercel
 
