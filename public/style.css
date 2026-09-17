@@ -641,6 +641,13 @@ main {
   color: #808080;
 }
 
+.icono-inline {
+  width: 13px;
+  height: 13px;
+  vertical-align: -2px;
+  color: #b8b8b8;
+}
+
 .lista-incidencias {
   list-style: none;
   margin: 0;
