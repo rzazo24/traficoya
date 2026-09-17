@@ -381,9 +381,43 @@ main {
   line-height: 1.4;
 }
 
-.popup-incidencia h3 {
+.popup-incidencia__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
   margin: 0 0 0.35rem;
+}
+
+.popup-incidencia__header h3 {
+  margin: 0;
   font-size: 0.95rem;
+}
+
+.popup-compartir {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid #808080;
+  color: #808080;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.popup-compartir svg {
+  display: block;
+  width: 12px;
+  height: 12px;
+}
+
+.popup-compartir:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .popup-incidencia dl {

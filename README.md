@@ -37,6 +37,14 @@ municipio (acentos y mayúsculas no importan), sugiriendo coincidencias mientras
 filtros de la leyenda. El botón de al lado pide la ubicación al navegador, la marca en el mapa
 y añade la distancia a cada incidencia en su propio popup.
 
+## Enlace compartible
+
+Al abrir el popup de una incidencia, la URL se actualiza sola con `?id=` (sin recargar ni
+generar entradas nuevas en el historial) — copiarla desde el navegador basta para compartir esa
+incidencia en concreto. El icono junto al título del popup hace lo mismo con un toque: abre el
+diálogo nativo de compartir en móvil, o copia el enlace si el navegador no lo tiene. Abrir un
+enlace con `?id=` de una incidencia que ya se resolvió avisa en vez de fallar en silencio.
+
 ## Ayuda
 
 El botón "?" de la cabecera abre un panel con una explicación del mapa, los colores de los

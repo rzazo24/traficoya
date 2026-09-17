@@ -22,6 +22,10 @@
     '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   const ICON_LOCATION =
     '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  const ICON_SHARE =
+    '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const ICON_CHECK =
+    '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   const estadoEl = document.getElementById('estado');
   const btnRefrescar = document.getElementById('btn-refrescar');
@@ -39,6 +43,30 @@
 
   const capaIncidencias = L.layerGroup().addTo(mapa);
   const capaUbicacion = L.layerGroup().addTo(mapa);
+
+  // Marcador de cada incidencia por id, reconstruido en cada pintarIncidencias() igual que la
+  // propia capa — sirve para poder abrir el popup correcto al cargar con ?id= en la URL.
+  const marcadoresPorId = new Map();
+
+  function idDesdeUrl() {
+    return new URLSearchParams(location.search).get('id');
+  }
+
+  // replaceState, no pushState: abrir o cerrar popups no debería llenar el historial del
+  // navegador con una entrada por cada marcador tocado, igual que el buscador tampoco lo hace.
+  function actualizarUrlIncidencia(id) {
+    const url = new URL(location.href);
+    if (id) url.searchParams.set('id', id);
+    else url.searchParams.delete('id');
+    history.replaceState(null, '', url.pathname + url.search);
+  }
+
+  function enlaceIncidencia(id) {
+    const url = new URL(location.href);
+    url.search = '';
+    url.searchParams.set('id', id);
+    return url.toString();
+  }
 
   // Distinta de capaIncidencias a propósito: pintarIncidencias limpia y repinta esa capa en
   // cada refresco/filtro, y el marcador de "tu ubicación" no debe parpadear ni desaparecer
@@ -107,12 +135,56 @@
 
     return `
       <div class="popup-incidencia">
-        <h3>${incidencia.descripcion_tipo || 'Incidencia'}</h3>
+        <div class="popup-incidencia__header">
+          <h3>${incidencia.descripcion_tipo || 'Incidencia'}</h3>
+          <button type="button" class="popup-compartir" data-id="${incidencia.id}" aria-label="Compartir esta incidencia">${ICON_SHARE}</button>
+        </div>
         <dl>${filas}</dl>
         ${badge}
       </div>
     `;
   }
+
+  function flashBoton(boton, iconoTemporal) {
+    const original = boton.innerHTML;
+    boton.innerHTML = iconoTemporal;
+    setTimeout(() => {
+      boton.innerHTML = original;
+    }, 1500);
+  }
+
+  // navigator.share (móvil, algunos navegadores de escritorio) abre el diálogo nativo de
+  // compartir; si no existe, se copia el enlace al portapapeles y el propio botón hace de
+  // confirmación visual (✓ un momento) en vez de un aviso aparte.
+  async function compartirIncidencia(incidencia, boton) {
+    const url = enlaceIncidencia(incidencia.id);
+    const texto = `${incidencia.descripcion_tipo || 'Incidencia'} en ${incidencia.carretera || incidencia.municipio || 'Madrid'} — TráficoYa`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'TráficoYa', text: texto, url });
+      } catch (error) {
+        // El usuario cerró el diálogo nativo sin elegir nada — no es un error que avisar.
+      }
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      flashBoton(boton, ICON_CHECK);
+    } catch (error) {
+      console.error('No se pudo copiar el enlace:', error);
+    }
+  }
+
+  // Delegado en document en vez de un listener por popup: el contenido de cada popup es HTML
+  // generado por Leaflet a partir del string de construirPopup, no nodos con listeners propios.
+  document.addEventListener('click', (event) => {
+    const boton = event.target.closest('.popup-compartir');
+    if (!boton) return;
+    const incidencia = ultimasIncidencias.find((i) => String(i.id) === boton.dataset.id);
+    if (incidencia) compartirIncidencia(incidencia, boton);
+  });
 
   // Sin tildes ni mayúsculas, para que "alcobendas"/"Alcobéndas" den con "Alcobendas" igual.
   function normalizarTexto(str) {
@@ -145,6 +217,7 @@
   // filtro por su cuenta.
   function pintarIncidencias(incidencias) {
     capaIncidencias.clearLayers();
+    marcadoresPorId.clear();
 
     const visibles = incidencias.filter(incidenciaVisible);
 
@@ -162,7 +235,17 @@
       });
 
       marcador.bindPopup(construirPopup(incidencia));
+      // Refleja en la URL qué incidencia se está viendo, para que se pueda compartir el enlace
+      // directo (ver enlaceIncidencia/compartirIncidencia) sin más que copiar la barra de
+      // direcciones. Solo se limpia al cerrar si sigue siendo la incidencia actual en la URL —
+      // si ya se abrió otra (p.ej. al tocar un marcador distinto sin cerrar antes), el cierre
+      // "viejo" de la primera no debe borrar el id de la que se acaba de abrir.
+      marcador.on('popupopen', () => actualizarUrlIncidencia(incidencia.id));
+      marcador.on('popupclose', () => {
+        if (idDesdeUrl() === String(incidencia.id)) actualizarUrlIncidencia(null);
+      });
       marcador.addTo(capaIncidencias);
+      marcadoresPorId.set(String(incidencia.id), marcador);
     });
 
     buscadorSinResultados.hidden = !textoBusqueda || visibles.length > 0;
@@ -357,6 +440,24 @@
     );
   });
 
+  // Solo se intenta una vez, en la primera carga — no en cada refresco de 3 minutos, o
+  // reabriría el popup enlazado (y le robaría el foco al usuario) cada vez que llega el turno
+  // del auto-refresco, aunque llevara un rato navegando tranquilamente por otro sitio del mapa.
+  let enlaceInicialProcesado = false;
+
+  function abrirIncidenciaDesdeUrl() {
+    const id = idDesdeUrl();
+    if (!id) return;
+
+    const marcador = marcadoresPorId.get(id);
+    if (!marcador) {
+      estadoEl.textContent = 'La incidencia enlazada ya no está activa.';
+      return;
+    }
+    mapa.setView(marcador.getLatLng(), 14);
+    marcador.openPopup();
+  }
+
   async function cargarIncidencias() {
     btnRefrescar.disabled = true;
     estadoEl.textContent = 'Actualizando…';
@@ -371,6 +472,11 @@
 
       const hora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       estadoEl.textContent = `${incidencias.length} incidencias · actualizado ${hora}`;
+
+      if (!enlaceInicialProcesado) {
+        enlaceInicialProcesado = true;
+        abrirIncidenciaDesdeUrl();
+      }
     } catch (error) {
       console.error('Error cargando incidencias:', error);
       estadoEl.textContent = 'Error al cargar incidencias. Reintentando en breve…';
